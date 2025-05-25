@@ -1,3 +1,5 @@
+"use server";
+
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -8,12 +10,6 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      auth: {
-        flowType: "pkce",
-        autoRefreshToken: true,
-        detectSessionInUrl: false,
-        persistSession: true,
-      },
       cookies: {
         getAll() {
           return cookieStore.getAll();

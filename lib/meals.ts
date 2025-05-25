@@ -1,8 +1,9 @@
-import supabase from "./supabase";
+import { createClient } from "@/utils/supabase/client";
 
 async function getFile(path: string) {
   {
     try {
+      const supabase = await createClient();
       console.log(`Attempting to fetch file ${path}`);
       const { data, error } = await supabase.storage
         .from("menus")
@@ -227,11 +228,7 @@ export async function getMenuDay(
   return getMenu(options);
 }
 
-export function createMeal() {
-  // Implementation needed
-  console.warn("createMeal function is not implemented.");
-  return null;
-}
+export function createMeal() {}
 
 export function createCustomFoodItem() {
   // Implementation needed
@@ -274,6 +271,11 @@ export type DailyNutritionSummary = {
 // Represents a food item within a logged meal, including quantity
 export type MealFoodItem = FoodItem & { quantity: number };
 
+export type MealWithFoodItems = Meal & {
+  dining_hall?: DiningHall;
+  food_items: (FoodItem & { quantity: number })[];
+};
+
 // Represents a Meal with its associated Food Items fetched
 // Adapt based on your actual 'meals' table structure and relations
 export type MealWithDetails = Meal & {
@@ -305,48 +307,67 @@ export type MealWithDetails = Meal & {
  */
 export async function getUserMeals(
   userId: string,
-  limit: number = 5
-): Promise<MealWithDetails[]> {
-  if (!userId) {
-    console.error("User ID is required to fetch meals.");
-    return [];
-  }
-
+  limit = 10
+): Promise<MealWithFoodItems[]> {
   try {
-    // Fetch meals and their related items
-    // Adjust the query based on your actual table names and relationships
-    // This example assumes a 'meals' table and a 'meal_items' join table
-    // linking to 'food_items'
-    const { data, error } = await supabase
+    const supabase = createClient();
+    // First get the meals
+    const { data: meals, error: mealsError } = await supabase
       .from("meals")
       .select(
         `
-                *,
-                meal_items (
-                    quantity,
-                    food_items (*)
-                )
-            `
+        *,
+        dining_hall:dining_halls(*)
+      `
       )
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+      .order("meal_date", { ascending: false })
+      .order("meal_time", { ascending: false })
       .limit(limit);
 
-    if (error) {
-      console.error("Error fetching user meals:", error);
-      throw error;
+    if (mealsError) {
+      console.error("Error fetching meals:", mealsError);
+      return [];
     }
 
-    // Process data to match MealWithDetails structure more closely if needed
-    // For example, renaming nested food_items to food_items directly under meal_items
-    // or mapping the result to a structure expected by the dashboard component.
-    // The current structure returned by the query might already work depending
-    // on how the dashboard accesses it.
-    // The below type assertion assumes the returned structure is compatible.
+    if (!meals || meals.length === 0) {
+      return [];
+    }
 
-    return (data as MealWithDetails[]) || [];
+    // For each meal, get the food items
+    const mealsWithFoodItems: MealWithFoodItems[] = await Promise.all(
+      meals.map(async (meal) => {
+        const { data: mealFoodItems, error: mfError } = await supabase
+          .from("meal_food_items")
+          .select(
+            `
+            *,
+            food_item:food_items(*)
+          `
+          )
+          .eq("meal_id", meal.id);
+
+        if (mfError) {
+          console.error(
+            `Error fetching food items for meal ${meal.id}:`,
+            mfError
+          );
+          return { ...meal, food_items: [] };
+        }
+
+        const foodItems =
+          mealFoodItems?.map((mfi) => ({
+            ...mfi.food_item,
+            quantity: mfi.quantity,
+          })) || [];
+
+        return { ...meal, food_items: foodItems };
+      })
+    );
+
+    return mealsWithFoodItems;
   } catch (error) {
-    console.error("Caught error in getUserMeals:", error);
+    console.error("Error fetching user meals with food items:", error);
     return [];
   }
 }
@@ -371,16 +392,17 @@ export async function getDailyNutritionSummary(
     // Note: Supabase filters dates based on the full timestamp by default.
     // If your 'meals' table has a 'date' column of type DATE, use that.
     // If using 'created_at' (TIMESTAMP), you need to filter by range.
+    const supabase = createClient();
 
     // Example using created_at range:
     const startDate = `${date}T00:00:00.000Z`;
     const endDate = `${date}T23:59:59.999Z`;
 
     const { data: meals, error } = await supabase
-      .from("meals")
+      .from("public")
       .select(
         `
-                meal_items (
+                user_food_items (
                     quantity,
                     food_items (
                         calories,
@@ -421,8 +443,8 @@ export async function getDailyNutritionSummary(
 
     meals.forEach((meal) => {
       // Type guard to ensure meal_items is an array
-      if (Array.isArray(meal.meal_items)) {
-        meal.meal_items.forEach((item) => {
+      if (Array.isArray(meal.user_food_items)) {
+        meal.user_food_items.forEach((item) => {
           // Adjust access to food_items assuming it might be an array[1]
           const foodDetails = Array.isArray(item.food_items)
             ? item.food_items[0]

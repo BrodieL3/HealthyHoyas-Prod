@@ -15,8 +15,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "./ui/sonner";
 import Link from "next/link";
 import { useState } from "react";
-import { User } from "@supabase/supabase-js";
-import supabase from "@/utils/supabase/client";
+import { LogoutButton } from "./logout-button";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,13 +31,7 @@ export function Layout({
   isMobile,
 }: LayoutProps) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/auth/login");
-  };
 
   const tabs = [
     { id: "dashboard", label: "Home", icon: <Home className="h-5 w-5" /> },
@@ -78,14 +71,7 @@ export function Layout({
                 ))}
               </nav>
             </div>
-            <Button
-              variant="ghost"
-              onClick={handleSignOut}
-              className="flex items-center gap-2"
-            >
-              <LogOut className="h-5 w-5" />
-              Sign Out
-            </Button>
+            <LogoutButton />
           </div>
         </header>
       )}

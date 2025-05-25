@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import supabase from "@/utils/supabase/client";
+import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +33,7 @@ export function UpdatePasswordForm({
     setError(null);
 
     try {
+      const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       // Update this route to redirect to an authenticated route. The user already has an active session.

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import supabase from "@/utils/supabase/client";
+import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +40,7 @@ export function SignUpForm({
     }
 
     try {
+      const supabase = createClient();
       const { error } = await supabase.auth.signUp({
         email,
         password,

@@ -1,13 +1,37 @@
 "use client";
 
 import type React from "react";
-
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, memo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 import {
   CheckCircle2,
   ArrowLeft,
@@ -16,6 +40,15 @@ import {
   Plus,
   Trash2,
   Save,
+  MapPin,
+  Clock,
+  Calendar as CalendarIcon,
+  Target,
+  TrendingUp,
+  Filter,
+  Check,
+  ChevronsUpDown,
+  X,
 } from "lucide-react";
 import {
   getDiningHalls,
@@ -37,46 +70,45 @@ import {
   type Station,
   type User,
 } from "@/lib/meals";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   searchUSDAFoods,
   convertUSDAToFoodItem,
   type USDASearchResult,
 } from "@/lib/usda";
+import { logUserMeal } from "@/lib/supabase";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import { FoodSearch } from "@/components/food-search";
 
 // Define props type
 interface LogFoodProps {
   userId: string;
+  initialDiningHallId?: string | null;
 }
 
 // Type definition for the structure of the cached nutrition data
 interface CachedNutritionData {
-  [key: string]: string | undefined; // Allows keys like 'Calories', 'Fat', etc.
+  [key: string]: string | undefined;
 }
 
-export function LogFood({ userId }: LogFoodProps) {
-  // Accept userId prop
+// Extended FoodItem type with dining hall and meal period metadata
+type ExtendedFoodItem = FoodItem & {
+  diningHallId?: string;
+  diningHallName?: string;
+  mealPeriodName?: string;
+};
+
+export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
+  const { toast } = useToast();
+
   // Form state
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [mealPeriod, setMealPeriod] = useState<MealPeriod | null>(null);
   const [diningHallId, setDiningHallId] = useState<string | null>(null);
-  const [mealDate, setMealDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [mealDate, setMealDate] = useState(new Date());
   const [mealTime, setMealTime] = useState(format(new Date(), "HH:mm"));
   const [mealNotes, setMealNotes] = useState("");
 
@@ -89,7 +121,6 @@ export function LogFood({ userId }: LogFoodProps) {
   const [selectedFoodItems, setSelectedFoodItems] = useState<
     (FoodItem & { quantity: number })[]
   >([]);
-  // Add state for nutrition cache
   const [nutritionCache, setNutritionCache] = useState<
     Record<string, CachedNutritionData>
   >({});
@@ -97,36 +128,34 @@ export function LogFood({ userId }: LogFoodProps) {
   // UI state
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [openFoodSelector, setOpenFoodSelector] = useState(false);
-  const [showDiningHallSuggestions, setShowDiningHallSuggestions] =
-    useState(false);
-  const [skippedMealPeriodStep, setSkippedMealPeriodStep] = useState(false);
-
-  // Dining hall search state
-  const [diningHallSearchResults, setDiningHallSearchResults] = useState<
-    FoodItem[]
-  >([]);
-  const [isSearchingDiningHall, setIsSearchingDiningHall] = useState(false);
-
-  // State for user-selected Meal Type
+  const [openDatePicker, setOpenDatePicker] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState<
     "Breakfast" | "Lunch" | "Dinner" | null
   >(null);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Fetch initial data (today's menu AND nutrition cache)
+  // Ref to store available foods
+  const availableFoodsRef = useRef<ExtendedFoodItem[]>([]);
+
+  // Check screen size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
+
+  // Fetch initial data
   useEffect(() => {
     async function fetchInitialData() {
       setIsLoading(true);
-      setDiningHallId(null);
-      setMealPeriod(null);
       try {
-        // Fetch both in parallel
         const [todayMenu, cache] = await Promise.all([
-          getMenuDay(), // Fetch today's menu
-          getNutritionCache(), // Fetch nutrition cache
+          getMenuDay(),
+          getNutritionCache(),
         ]);
-
-        console.log("Fetched Nutrition Cache object:", cache);
 
         setDailyMenuData(todayMenu);
         setNutritionCache(cache);
@@ -135,22 +164,20 @@ export function LogFood({ userId }: LogFoodProps) {
           const halls = getDiningHalls(todayMenu);
           setDiningHalls(halls);
         } else {
-          console.warn("Could not fetch today's menu data.");
           setDiningHalls([]);
         }
       } catch (error) {
         console.error("Error fetching initial data:", error);
         setDiningHalls([]);
-        setNutritionCache({}); // Clear cache on error too
+        setNutritionCache({});
       } finally {
         setIsLoading(false);
       }
     }
-
     fetchInitialData();
-  }, []); // Runs once on mount
+  }, []);
 
-  // Fetch menu data when the date changes (keep cache fetching separate)
+  // Fetch menu data when date changes
   useEffect(() => {
     async function fetchMenuForDate() {
       if (mealDate) {
@@ -161,11 +188,10 @@ export function LogFood({ userId }: LogFoodProps) {
         setDiningHallId(null);
         setMealPeriod(null);
         try {
-          const dateObj = parseISO(mealDate);
           const menu = await getMenuDay({
-            year: dateObj.getFullYear(),
-            month: dateObj.getMonth() + 1,
-            day: dateObj.getDate(),
+            year: mealDate.getFullYear(),
+            month: mealDate.getMonth() + 1,
+            day: mealDate.getDate(),
           });
           setDailyMenuData(menu);
 
@@ -174,81 +200,134 @@ export function LogFood({ userId }: LogFoodProps) {
             setDiningHalls(halls);
           }
         } catch (error) {
-          console.error("Error fetching menu for date:", mealDate, error);
+          console.error("Error fetching menu for date:", error);
           setDiningHalls([]);
         } finally {
           setIsLoading(false);
         }
       }
     }
-
     fetchMenuForDate();
   }, [mealDate]);
 
-  // Update available meal periods when dining hall changes (and menu data is available)
-  // Simplified: This effect now ONLY sets the list of available periods.
-  // Selection logic is handled by the button clicks.
+  // Update meal periods when dining hall changes
   useEffect(() => {
     if (dailyMenuData && diningHallId) {
       const periods = getMealPeriods(dailyMenuData, diningHallId);
       setMealPeriods(periods);
-      // REMOVED: Logic that auto-selected mealPeriod here
     } else {
-      setMealPeriods([]); // Clear periods if no menu or hall selected
+      setMealPeriods([]);
     }
-    // We don't clear the selected mealPeriod here,
-    // it's cleared explicitly when needed (e.g., in goBack or handleSubmit reset)
-  }, [dailyMenuData, diningHallId]); // Runs when menu data or dining hall ID changes
+  }, [dailyMenuData, diningHallId]);
 
-  // Add click outside handler
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".search-container")) {
-        setShowDiningHallSuggestions(false);
-      }
-    };
+  // Derived state for available foods
+  const availableDiningHallFoods = useMemo(() => {
+    if (!dailyMenuData || Object.keys(nutritionCache).length === 0) {
+      return [];
+    }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    let allFoods: FoodItem[] = [];
+    const halls = getDiningHalls(dailyMenuData);
 
-  const handleMealPeriodSelect = (period: MealPeriod) => {
-    setMealPeriod(period);
-    console.log(`Selected meal period: ${period.name}`);
-    setSkippedMealPeriodStep(false);
-    setStep(3); // Proceed to food selection
-  };
+    halls.forEach((hall) => {
+      const periods = getMealPeriods(dailyMenuData, hall.id);
+      periods.forEach((period) => {
+        const stations = getStations(dailyMenuData, hall.id, period.name);
+        stations.forEach((station) => {
+          const foodsFromStation = getFoodsByStation(
+            dailyMenuData,
+            hall.id,
+            period.name,
+            station.name
+          );
+          const enrichedFoods = foodsFromStation.map((food) => {
+            const cacheKey = String(food.recipeId);
+            const cachedNutrition = nutritionCache[cacheKey];
 
-  const handleDiningHallSelect = (id: string) => {
-    setDiningHallId(id);
-    console.log(`Selected dining hall id: ${id}`);
-    setSelectedFoodItems([]); // Clear selected items when changing hall
-    setSearchQuery(""); // Clear search
+            let nutritionDetails: Partial<FoodItemDetails> = {
+              calories: 0,
+              protein: 0,
+              fat: 0,
+              carbs: 0,
+              sugar: 0,
+              fiber: 0,
+              sodium: 0,
+            };
 
-    // Check if we can skip Step 2 (Meal Period selection)
-    if (dailyMenuData) {
-      const periods = getMealPeriods(dailyMenuData, id);
-      if (periods.length === 1) {
-        console.log(
-          `Only one meal period (${periods[0].name}), skipping step 2.`
-        );
-        setMealPeriod(periods[0]); // Auto-select the only period
-        setSkippedMealPeriodStep(true);
-        setStep(3); // Go directly to food selection
-      } else {
-        // Multiple or zero periods, need user selection
-        setMealPeriod(null); // Ensure no period is selected yet
-        setSkippedMealPeriodStep(false);
-        setStep(2); // Proceed to meal period selection
-        // The useEffect above will update the mealPeriods state for display
-      }
-    } else {
-      // Should not happen often if Step 1 loaded halls, but fallback just in case
-      console.warn("No menu data available when selecting dining hall.");
+            if (cachedNutrition) {
+              const parseNutritionValue = (
+                value: string | undefined
+              ): number => {
+                if (!value) return 0;
+                const numericPart = value.replace(/[^\d.]/g, "");
+                return parseFloat(numericPart) || 0;
+              };
+
+              nutritionDetails = {
+                calories: parseNutritionValue(cachedNutrition["Calories"]),
+                protein: parseNutritionValue(cachedNutrition["Protein"]),
+                fat: parseNutritionValue(cachedNutrition["Fat"]),
+                carbs: parseNutritionValue(cachedNutrition["Carbohydrate"]),
+                sugar: parseNutritionValue(cachedNutrition["Sugars"]),
+                fiber: parseNutritionValue(cachedNutrition["Dietary Fiber"]),
+                sodium: parseNutritionValue(cachedNutrition["Sodium"]),
+              };
+            }
+
+            return {
+              ...food,
+              ...nutritionDetails,
+              diningHallId: hall.id,
+              diningHallName: hall.name,
+              mealPeriodName: period.name,
+            };
+          });
+          allFoods = allFoods.concat(enrichedFoods);
+        });
+      });
+    });
+
+    const uniqueFoods = Array.from(
+      new Map(allFoods.map((food) => [food.id, food])).values()
+    );
+    availableFoodsRef.current = uniqueFoods as ExtendedFoodItem[];
+    return uniqueFoods;
+  }, [dailyMenuData, nutritionCache]);
+
+  // Filter foods based on current selection
+  const filteredFoods = useMemo(() => {
+    let foods = availableDiningHallFoods as ExtendedFoodItem[];
+
+    if (diningHallId) {
+      foods = foods.filter((food) => food.diningHallId === diningHallId);
+    }
+
+    if (mealPeriod) {
+      foods = foods.filter((food) => food.mealPeriodName === mealPeriod.name);
+    }
+
+    return foods;
+  }, [availableDiningHallFoods, diningHallId, mealPeriod]);
+
+  const totalNutrition = useMemo(() => {
+    return selectedFoodItems.reduce(
+      (acc, item) => ({
+        calories: acc.calories + (item.calories || 0) * item.quantity,
+        protein: acc.protein + (item.protein || 0) * item.quantity,
+        carbs: acc.carbs + (item.carbs || 0) * item.quantity,
+        fat: acc.fat + (item.fat || 0) * item.quantity,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+  }, [selectedFoodItems]);
+
+  const handleDiningHallSelect = (hallId: string) => {
+    if (hallId === "all") {
+      setDiningHallId(null);
       setMealPeriod(null);
-      setSkippedMealPeriodStep(false);
-      setStep(2); // Go to step 2, useEffect will populate periods when data loads
+    } else {
+      setDiningHallId(hallId);
+      setMealPeriod(null);
     }
   };
 
@@ -264,10 +343,6 @@ export function LogFood({ userId }: LogFoodProps) {
     } else {
       setSelectedFoodItems([...selectedFoodItems, { ...food, quantity: 1 }]);
     }
-
-    setOpenFoodSelector(false);
-    setSearchQuery("");
-    setShowDiningHallSuggestions(false);
   };
 
   const handleUpdateFoodQuantity = (id: string, quantity: number) => {
@@ -288,54 +363,71 @@ export function LogFood({ userId }: LogFoodProps) {
 
   const handleSubmit = async () => {
     if (!userId) {
-      alert("You must be logged in to log a meal");
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to log a meal",
+        variant: "destructive",
+      });
       return;
     }
+
     if (selectedFoodItems.length === 0) {
-      alert("Please add at least one food item to your meal");
+      toast({
+        title: "No Items Selected",
+        description: "Please add at least one food item to your meal",
+        variant: "destructive",
+      });
       return;
     }
-    if (!mealPeriod) {
-      alert("Internal error: Meal period not set."); // Should be set by flow
-      return;
-    }
-    // Ensure a Meal Type (Breakfast/Lunch/Dinner) is selected
+
     if (!selectedMealType) {
-      alert("Please select a meal type (Breakfast, Lunch, or Dinner).");
+      toast({
+        title: "Meal Type Required",
+        description: "Please select a meal type (Breakfast, Lunch, or Dinner)",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsLoading(true);
     try {
-      const mealData: Partial<Meal> & {
-        user_id: string;
-        meal_type: "Breakfast" | "Lunch" | "Dinner";
-      } = {
-        user_id: userId,
-        notes: mealNotes || undefined,
-        meal_period_name: mealPeriod.name, // Store the serving period name (optional context)
-        meal_type: selectedMealType, // Store the user-selected meal type
-      };
+      const result = await logUserMeal({
+        userId,
+        mealType: selectedMealType,
+        mealDate: format(mealDate, "yyyy-MM-dd"),
+        mealNotes,
+        foodItems: selectedFoodItems.map(
+          ({ quantity, id, calories, protein, carbs, fat, ...item }) => ({
+            ...item,
+            id: Number(id),
+            calories: calories ?? 0,
+            protein: protein ?? 0,
+            carbs: carbs ?? 0,
+            fat: fat ?? 0,
+            quantity,
+            is_dining_hall_food: true,
+          })
+        ),
+      });
 
-      const foodItemsData = selectedFoodItems.map((item) => ({
-        food_id: item.id,
-        amount: item.quantity,
-        unit: "serving",
-      }));
+      if (result && result.id) {
+        toast({
+          title: "Meal Logged Successfully! 🎉",
+          description: `${selectedMealType} with ${Math.round(
+            totalNutrition.calories
+          )} calories has been saved.`,
+        });
 
-      console.warn("createMeal requires implementation. Simulating success.");
-      const simulatedMealId = `meal-${Date.now()}`;
-
-      if (simulatedMealId) {
+        // Reset form
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);
           setStep(1);
           setDiningHallId(null);
           setMealPeriod(null);
-          setSelectedMealType(null); // Reset Meal Type
+          setSelectedMealType(null);
           setMealPeriods([]);
-          setMealDate(format(new Date(), "yyyy-MM-dd"));
+          setMealDate(new Date());
           setMealTime(format(new Date(), "HH:mm"));
           setMealNotes("");
           setSelectedFoodItems([]);
@@ -344,564 +436,620 @@ export function LogFood({ userId }: LogFoodProps) {
       }
     } catch (error) {
       console.error("Error submitting meal:", error);
+      toast({
+        title: "Error Logging Meal",
+        description: "There was an error logging your meal. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const goBack = () => {
-    if (step > 1) {
-      const previousStep = step - 1;
-
-      if (step === 3) {
-        // Clear Meal Type when leaving Step 3
-        setSelectedMealType(null);
-        if (skippedMealPeriodStep) {
-          console.log("Going back from Step 3, skipping Step 2");
-          setStep(1);
-        } else {
-          console.log("Going back from Step 3 to Step 2");
-          setStep(2);
-        }
-      } else {
-        setStep(previousStep);
-      }
-
-      if (step === 3) {
-        setSearchQuery("");
-        setDiningHallSearchResults([]);
-        setShowDiningHallSuggestions(false);
-      }
-      if (step === 2 || (step === 3 && skippedMealPeriodStep)) {
-        setMealPeriod(null);
-      }
-    }
+  // Wrapper function to handle ExtendedFoodItem from the search component
+  const handleFoodSelectFromSearch = (food: ExtendedFoodItem) => {
+    // Convert ExtendedFoodItem to FoodItem format
+    const foodItem: FoodItem = {
+      id: food.id,
+      name: food.name,
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat,
+      recipeId: typeof food.id === "string" ? parseInt(food.id) : food.id,
+      vegetarian: false,
+      vegan: false,
+      glutenFree: false,
+      timeFetched: new Date().toISOString(),
+    };
+    handleAddFoodItem(foodItem);
   };
 
-  const totalNutrition = useMemo(() => {
-    return selectedFoodItems.reduce(
-      (acc, item) => {
-        return {
-          calories: acc.calories + (item.calories || 0) * item.quantity,
-          protein: acc.protein + (item.protein || 0) * item.quantity,
-          carbs: acc.carbs + (item.carbs || 0) * item.quantity,
-          fat: acc.fat + (item.fat || 0) * item.quantity,
-        };
-      },
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
-    );
-  }, [selectedFoodItems]);
-
-  // Derived state for available dining hall foods with nutrition info
-  const availableDiningHallFoods = useMemo(() => {
-    // Check if necessary data is loaded
-    if (
-      !dailyMenuData ||
-      !diningHallId ||
-      !mealPeriod ||
-      Object.keys(nutritionCache).length === 0
-    ) {
-      if (Object.keys(nutritionCache).length === 0) {
-        // console.log("availableDiningHallFoods: Skipping, nutritionCache is empty");
-      }
-      return []; // Return empty array if data isn't ready
-    }
-
-    console.log(
-      `useMemo: Recalculating availableDiningHallFoods for ${diningHallId}, ${mealPeriod.name}`
-    );
-
-    // Use helper functions to get base food items
-    const stations = getStations(dailyMenuData, diningHallId, mealPeriod.name);
-    let allFoods: FoodItem[] = [];
-
-    stations.forEach((station) => {
-      const foodsFromStation = getFoodsByStation(
-        dailyMenuData,
-        diningHallId,
-        mealPeriod.name,
-        station.name
-      );
-
-      // Enrich each food item with nutrition data from the cache
-      const enrichedFoods = foodsFromStation.map((food) => {
-        // Use recipeId as the key, matching how the cache is likely structured/fetched
-        const cacheKey = String(food.recipeId);
-        const cachedNutrition = nutritionCache[cacheKey];
-
-        // Default nutrition details (parsed as numbers)
-        let nutritionDetails: Partial<FoodItemDetails> = {
-          calories: 0,
-          protein: 0,
-          fat: 0,
-          carbs: 0,
-          sugar: 0,
-          fiber: 0,
-          sodium: 0,
-        };
-
-        if (cachedNutrition) {
-          // Parse cache values into numbers, default to 0 if missing/NaN
-          nutritionDetails = {
-            calories: parseFloat(cachedNutrition["Calories"] || "0") || 0,
-            protein: parseFloat(cachedNutrition["Protein (g)"] || "0") || 0,
-            fat: parseFloat(cachedNutrition["Fat (g)"] || "0") || 0,
-            carbs: parseFloat(cachedNutrition["Carbohydrates (g)"] || "0") || 0,
-            sugar: parseFloat(cachedNutrition["Sugar (g)"] || "0") || 0,
-            fiber: parseFloat(cachedNutrition["Fiber (g)"] || "0") || 0,
-            sodium: parseFloat(cachedNutrition["Sodium (mg)"] || "0") || 0,
-          };
-        }
-
-        // Return the original food item spread with the parsed nutrition values merged/overwritten
-        return {
-          ...food, // Spread base food info (id, name, recipeId, flags, etc.)
-          ...nutritionDetails, // Spread parsed nutrition details directly onto the object
-        };
-      });
-      allFoods = allFoods.concat(enrichedFoods);
-    });
-
-    // Deduplicate based on food ID (recipeId might be better if unique)
-    const uniqueFoods = Array.from(
-      new Map(allFoods.map((food) => [food.id, food])).values()
-    );
-
-    console.log(
-      "useMemo: Finished calculating availableDiningHallFoods. Count:",
-      uniqueFoods.length
-    );
-    return uniqueFoods;
-  }, [dailyMenuData, diningHallId, mealPeriod, nutritionCache]); // Depend on cache
-
-  const filterDiningHallFoods = (query: string): FoodItem[] => {
-    if (!query) return [];
-    return availableDiningHallFoods.filter((food) =>
-      food.name.toLowerCase().includes(query.toLowerCase())
-    );
-  };
-
-  const handleDiningHallSearch = (query: string) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
-      setDiningHallSearchResults([]);
-      setShowDiningHallSuggestions(false);
-      return;
-    }
-
-    setIsSearchingDiningHall(true);
-    const results = filterDiningHallFoods(query);
-    setDiningHallSearchResults(results);
-    setShowDiningHallSuggestions(true);
-    setIsSearchingDiningHall(false);
-  };
-
-  const handleDiningHallFoodSelect = (food: FoodItem) => {
-    handleAddFoodItem(food);
-  };
-
-  // New handler to change meal period directly from Step 3
-  const handleChangeMealPeriod = (period: MealPeriod) => {
-    if (mealPeriod?.name !== period.name) {
-      // Only update if different
-      console.log(`Changing meal period to: ${period.name}`);
-      setMealPeriod(period);
-      setSelectedFoodItems([]); // Clear selected foods as available items change
-      setSearchQuery(""); // Clear search
-      setShowDiningHallSuggestions(false); // Hide suggestions
-    }
-  };
-
-  const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold">Select Dining Hall</h2>
-        <p className="text-muted-foreground">Choose where you ate on campus</p>
-      </div>
-
-      {isLoading && diningHalls.length === 0 ? (
-        <div className="text-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-        </div>
-      ) : diningHalls.length === 0 ? (
-        <p className="text-center text-muted-foreground py-4">
-          No dining halls found for {mealDate}.
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {diningHalls.map((hall) => (
-            <Button
-              key={hall.id}
-              variant={diningHallId === hall.id ? "default" : "outline"}
-              className="flex flex-col items-start justify-between h-auto p-4 border-2 w-full"
-              onClick={() => handleDiningHallSelect(hall.id)}
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-base font-medium">{hall.name}</span>
-              </div>
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
+  // Get current dining hall name
+  const currentDiningHall = diningHalls.find(
+    (hall) => hall.id === diningHallId
   );
 
-  const renderStep2 = () => (
-    <div className="space-y-4">
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" size="sm" onClick={goBack} className="mr-2">
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
-        <div>
-          <h2 className="text-xl font-semibold">Select Meal Period</h2>
-          <p className="text-muted-foreground">
-            Choose which meal you're logging (
-            {diningHalls.find((h) => h.id === diningHallId)?.name})
-          </p>
-        </div>
-      </div>
-
-      {isLoading && mealPeriods.length === 0 ? (
-        <div className="text-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-        </div>
-      ) : mealPeriods.length === 0 ? (
-        <p className="text-center text-muted-foreground py-4">
-          No meal periods available for this dining hall.
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {mealPeriods.map((period) => (
-            <Button
-              key={period.name}
-              variant={mealPeriod?.name === period.name ? "default" : "outline"}
-              className="flex flex-col items-center justify-center h-auto py-4 border-2"
-              onClick={() => handleMealPeriodSelect(period)}
-            >
-              <span className="text-base font-medium">{period.name}</span>
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderStep3 = () => {
-    const currentDiningHallName = diningHalls.find(
-      (hall) => hall.id === diningHallId
-    )?.name;
-    // Use selectedMealType for the title if available, otherwise fallback
-    const displayMealName = selectedMealType || mealPeriod?.name || "Meal";
-    const stepTitle = `Log ${displayMealName} (${
-      currentDiningHallName || "Dining Hall"
-    })`;
-
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center mb-4">
-          {/* Back Button */}
-          <Button variant="ghost" size="sm" onClick={goBack} className="mr-2">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-          {/* Title */}
-          <div>
-            <h2 className="text-xl font-semibold">{stepTitle}</h2>
-            <p className="text-sm text-muted-foreground">
-              Select Meal Type, then search items.
-            </p>
-          </div>
-        </div>
-
-        {/* Meal Type Selection Buttons (Breakfast/Lunch/Dinner) */}
-        <div className="space-y-2">
-          <Label>What type of meal is this?</Label>
-          <div className="flex flex-wrap gap-2">
-            {(["Breakfast", "Lunch", "Dinner"] as const).map((type) => (
-              <Button
-                key={type}
-                variant={selectedMealType === type ? "default" : "secondary"} // Use secondary for non-selected
-                size="sm"
-                onClick={() => setSelectedMealType(type)}
-              >
-                {type}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Food Search - Only enable if Meal Type is selected? Or allow search anytime? */}
-          {/* Let's allow search anytime, but submission requires Meal Type */}
-          <div className="space-y-2">
-            <Label htmlFor="food-search">Search Menu Items</Label>
-            {/* ... Input and Search Results ... */}
-            <div className="relative search-container">
-              <Input
-                id="food-search"
-                name="food-search"
-                value={searchQuery}
-                onChange={(e) => handleDiningHallSearch(e.target.value)}
-                placeholder={`Search ${mealPeriod?.name || "menu"} items...`}
-                autoComplete="off"
-                disabled={availableDiningHallFoods.length === 0 && !isLoading}
-              />
-              {isSearchingDiningHall && (
-                <div className="absolute right-2.5 top-2.5">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+  // Desktop layout using modern shadcn components
+  const DesktopLayout = () => (
+    <div className="grid grid-cols-12 gap-6">
+      {/* Left Sidebar - Filters & Selection */}
+      <div className="col-span-3 space-y-4">
+        {/* Dining Hall Selection - Scrollable */}
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center">
+              <MapPin className="h-5 w-5 mr-2 text-blue-500" />
+              Dining Location
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-48 px-4">
+              <div className="space-y-2 py-2">
+                {/* All Locations Option */}
+                <div
+                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    !diningHallId
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                  onClick={() => handleDiningHallSelect("all")}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        !diningHallId ? "bg-blue-500" : "bg-gray-300"
+                      }`}
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        All Locations
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Browse all available items
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {showDiningHallSuggestions && (
-                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                  {diningHallSearchResults.length > 0 ? (
-                    <div className="p-1">
-                      {diningHallSearchResults.map((food) => (
-                        <div
-                          key={food.id}
-                          className="px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm flex flex-col text-sm"
-                          onClick={() => handleDiningHallFoodSelect(food)}
-                        >
-                          <span className="font-medium">{food.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {food.calories || 0} cal | P: {food.protein || 0}g |
-                            C: {food.carbs || 0}g | F: {food.fat || 0}g
-                          </span>
+                {/* Individual Dining Halls */}
+                {diningHalls.map((hall) => (
+                  <div
+                    key={hall.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      diningHallId === hall.id
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                    onClick={() => handleDiningHallSelect(hall.id)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          diningHallId === hall.id
+                            ? "bg-blue-500"
+                            : "bg-gray-300"
+                        }`}
+                      />
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {hall.name}
                         </div>
-                      ))}
+                        {diningHallId === hall.id && (
+                          <div className="text-xs text-blue-600">
+                            Currently selected
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="p-3 text-center text-sm text-muted-foreground">
-                      No matching food items found for "{searchQuery}".
-                    </div>
-                  )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Meal Period Selection - Show when dining hall is selected */}
+        {diningHallId && (
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center">
+                <Clock className="h-5 w-5 mr-2 text-green-500" />
+                Meal Period
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={mealPeriod?.name || ""}
+                onValueChange={(value) => {
+                  if (value === "all") {
+                    setMealPeriod(null);
+                  } else {
+                    const period = mealPeriods.find((p) => p.name === value);
+                    setMealPeriod(period || null);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select meal period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Periods</SelectItem>
+                  {mealPeriods.map((period) => (
+                    <SelectItem key={period.name} value={period.name}>
+                      {period.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Nutrition Summary */}
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center">
+              <TrendingUp className="h-5 w-5 mr-2 text-red-500" />
+              Nutrition Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedFoodItems.length > 0 ? (
+              <div className="space-y-3">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-500">
+                    {Math.round(totalNutrition.calories)}
+                  </div>
+                  <div className="text-sm text-gray-500">Calories</div>
                 </div>
-              )}
-            </div>
-            {availableDiningHallFoods.length === 0 && !isLoading && (
-              <p className="text-xs text-muted-foreground text-center pt-1">
-                No food items loaded for this dining hall and serving period.
-              </p>
-            )}
-          </div>
-
-          {/* Selected Items Section */}
-          <div className="space-y-2 pt-4">
-            {/* ... Selected items list and totals ... */}
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium">
-                Selected Items for {selectedMealType || "Meal"}
-              </h3>
-              <Badge variant="secondary">
-                {selectedFoodItems.length} items
-              </Badge>
-            </div>
-
-            {selectedFoodItems.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground text-sm">
-                <p>Search and select items to add them here.</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Protein:</span>
+                    <span className="font-semibold text-green-500">
+                      {Math.round(totalNutrition.protein)}g
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Carbs:</span>
+                    <span className="font-semibold text-yellow-500">
+                      {Math.round(totalNutrition.carbs)}g
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Fat:</span>
+                    <span className="font-semibold text-blue-500">
+                      {Math.round(totalNutrition.fat)}g
+                    </span>
+                  </div>
+                </div>
               </div>
             ) : (
-              <ScrollArea className="h-[180px] rounded-md border">
-                <div className="p-2 space-y-1">
-                  {selectedFoodItems.map((food) => (
-                    <div
-                      key={food.id}
-                      className="flex justify-between items-center p-2 rounded-md"
-                    >
-                      <div className="flex-1 mr-2">
-                        <div className="font-medium text-sm leading-tight">
-                          {food.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {Math.round((food.calories || 0) * food.quantity)} cal
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() =>
-                            handleUpdateFoodQuantity(
-                              food.id,
-                              food.quantity - (food.quantity > 1 ? 1 : 0.5)
-                            )
-                          }
-                          disabled={food.quantity <= 0.5}
-                        >
-                          -
-                        </Button>
-                        <span className="w-8 text-center text-sm font-medium">
-                          {food.quantity}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() =>
-                            handleUpdateFoodQuantity(
-                              food.id,
-                              food.quantity + 0.5
-                            )
-                          }
-                        >
-                          +
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                          onClick={() => handleRemoveFoodItem(food.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-
-            {/* Meal Totals */}
-            {selectedFoodItems.length > 0 && (
-              <div className="rounded-md border p-3 mt-3">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-medium text-sm">Meal Totals</h4>
-                  <span className="text-lg font-semibold">
-                    {Math.round(totalNutrition.calories)} Cal
-                  </span>
-                </div>
+              <div className="text-center py-6">
+                <div className="text-xl font-bold text-gray-300">0</div>
+                <div className="text-sm text-gray-400">Calories</div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Add items to see nutrition
+                </p>
               </div>
             )}
-          </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Serving Period Switcher Buttons - Only if > 1 period exists */}
-          {mealPeriods.length > 1 && (
-            <div className="space-y-2 pt-4 border-t">
-              <Label className="text-xs text-muted-foreground">
-                Change Available Items By Serving Period
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {mealPeriods.map((period) => (
+      {/* Main Content Area - Food Search */}
+      <div className="col-span-6">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 h-full">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center">
+              <Search className="h-5 w-5 mr-2 text-orange-500" />
+              Food Selection
+            </CardTitle>
+            <p className="text-gray-600">
+              {diningHallId && currentDiningHall ? (
+                <>
+                  Searching items from {currentDiningHall.name}
+                  {mealPeriod && <> • {mealPeriod.name}</>}
+                </>
+              ) : (
+                <>Search and add items from any dining hall or meal period</>
+              )}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Reverted Food Search */}
+            <div className="relative">
+              <FoodSearch
+                availableFoods={filteredFoods}
+                diningHallId={diningHallId}
+                mealPeriod={mealPeriod}
+                onFoodSelect={handleFoodSelectFromSearch}
+                placeholder="Search menu items..."
+                className="h-12 text-lg"
+              />
+            </div>
+
+            {/* Selected Items */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">Your Meal</h3>
+                <Badge variant="secondary">
+                  {selectedFoodItems.length} items
+                </Badge>
+              </div>
+
+              {selectedFoodItems.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                  <Target className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">
+                    No items added yet
+                  </p>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Search and select items to build your meal
+                  </p>
+                </div>
+              ) : (
+                <ScrollArea className="h-80 border rounded-lg">
+                  <div className="p-4 space-y-3">
+                    {selectedFoodItems.map((food) => (
+                      <div
+                        key={food.id}
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">
+                            {food.name}
+                          </div>
+                          <div className="text-xs text-red-500 font-medium mt-1">
+                            {Math.round((food.calories || 0) * food.quantity)}{" "}
+                            cal
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() =>
+                              handleUpdateFoodQuantity(
+                                food.id.toString(),
+                                food.quantity - (food.quantity > 1 ? 1 : 0.5)
+                              )
+                            }
+                            disabled={food.quantity <= 0.5}
+                          >
+                            -
+                          </Button>
+                          <span className="w-8 text-center text-sm font-medium">
+                            {food.quantity}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() =>
+                              handleUpdateFoodQuantity(
+                                food.id.toString(),
+                                food.quantity + 0.5
+                              )
+                            }
+                          >
+                            +
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-red-500"
+                            onClick={() =>
+                              handleRemoveFoodItem(food.id.toString())
+                            }
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right Sidebar - Meal Details */}
+      <div className="col-span-3 space-y-4">
+        {/* Meal Details - Moved to top */}
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Meal Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Meal Type Selection - Fixed layout */}
+            <div className="space-y-2">
+              <Label className="text-base font-medium">Meal Type</Label>
+              <div className="flex flex-col gap-2">
+                {(["Breakfast", "Lunch", "Dinner"] as const).map((type) => (
                   <Button
-                    key={period.name}
-                    variant={
-                      mealPeriod?.name === period.name ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => handleChangeMealPeriod(period)} // Existing handler works fine
+                    key={type}
+                    variant={selectedMealType === type ? "default" : "outline"}
+                    className="w-full justify-center h-9 text-sm"
+                    onClick={() => setSelectedMealType(type)}
                   >
-                    {period.name}
+                    {type}
                   </Button>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* Meal Details Section */}
-          <div className="space-y-4 pt-4 border-t">
-            {/* ... Date, Time, Notes inputs ... */}
-            <h3 className="font-medium">Log Details</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="meal-date">Date</Label>
-                <Input
-                  id="meal-date"
-                  type="date"
-                  value={mealDate}
-                  onChange={(e) => setMealDate(e.target.value)}
-                  className="text-sm"
-                />
+            {/* Date and Time - Stacked vertically */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm">Date</Label>
+                <Popover open={openDatePicker} onOpenChange={setOpenDatePicker}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !mealDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(mealDate, "MMMM d, yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={mealDate}
+                      onSelect={(date) => {
+                        setMealDate(date || new Date());
+                        setOpenDatePicker(false);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="meal-time">Time</Label>
+              <div>
+                <Label className="text-sm">Time</Label>
                 <Input
-                  id="meal-time"
                   type="time"
                   value={mealTime}
                   onChange={(e) => setMealTime(e.target.value)}
-                  className="text-sm"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="meal-notes">Notes (Optional)</Label>
+            {/* Notes */}
+            <div>
+              <Label className="text-sm">Notes (Optional)</Label>
               <Textarea
-                id="meal-notes"
                 value={mealNotes}
                 onChange={(e) => setMealNotes(e.target.value)}
                 placeholder="Add any notes about this meal..."
-                rows={2}
-                className="text-sm"
+                rows={3}
               />
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Submit Button */}
-          <Button
-            onClick={handleSubmit}
-            className="w-full mt-6"
-            disabled={
-              selectedFoodItems.length === 0 || isLoading || !selectedMealType
-            } // Also disable if no meal type selected
-            size="lg"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-            )}
-            Log {selectedMealType || "Meal"} (
-            {Math.round(totalNutrition.calories)} Cal)
-          </Button>
+        {/* Submit Button */}
+        <Button
+          onClick={handleSubmit}
+          className="w-full h-12 text-lg"
+          disabled={
+            selectedFoodItems.length === 0 || isLoading || !selectedMealType
+          }
+          size="lg"
+        >
+          {isLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 mr-2" />
+          )}
+          Log {selectedMealType || "Meal"} (
+          <span className="text-primary-foreground/90 ml-1">
+            {Math.round(totalNutrition.calories)} Cal
+          </span>
+          )
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Mobile layout with simplified steps
+  const MobileLayout = () => {
+    if (submitted) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 w-full max-w-md">
+            <CardContent className="pt-8 pb-8 text-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Meal Logged!
+              </h3>
+              <p className="text-gray-600">
+                Your nutrition data has been updated successfully.
+              </p>
+            </CardContent>
+          </Card>
         </div>
+      );
+    }
+
+    return (
+      <div className="p-4">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+          <CardContent className="pt-6 space-y-6">
+            {/* Location & Period Selection */}
+            <div className="space-y-4">
+              <div>
+                <Label>Dining Location</Label>
+                <Select
+                  value={diningHallId || "all"}
+                  onValueChange={handleDiningHallSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {diningHalls.map((hall) => (
+                      <SelectItem key={hall.id} value={hall.id}>
+                        {hall.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {diningHallId && (
+                <div>
+                  <Label>Meal Period</Label>
+                  <Select
+                    value={mealPeriod?.name || "all"}
+                    onValueChange={(value) => {
+                      if (value === "all") {
+                        setMealPeriod(null);
+                      } else {
+                        const period = mealPeriods.find(
+                          (p) => p.name === value
+                        );
+                        setMealPeriod(period || null);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Periods</SelectItem>
+                      {mealPeriods.map((period) => (
+                        <SelectItem key={period.name} value={period.name}>
+                          {period.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {/* Food Search */}
+            <div className="space-y-3">
+              <Label>Search Food Items</Label>
+              <Command className="border rounded-lg">
+                <CommandInput
+                  placeholder="Search menu items..."
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                />
+                <CommandList>
+                  <CommandEmpty>No food items found.</CommandEmpty>
+                  <CommandGroup>
+                    <ScrollArea className="h-48">
+                      {filteredFoods
+                        .filter(
+                          (food) =>
+                            !searchQuery ||
+                            food.name
+                              .toLowerCase()
+                              .includes(searchQuery.toLowerCase())
+                        )
+                        .slice(0, 20)
+                        .map((food) => (
+                          <CommandItem
+                            key={food.id}
+                            value={food.name}
+                            onSelect={() => handleAddFoodItem(food)}
+                            className="flex justify-between items-center p-2"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">
+                                {food.name}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {food.diningHallName}
+                              </div>
+                            </div>
+                            <div className="text-xs text-red-500 font-medium">
+                              {Math.round(food.calories || 0)} cal
+                            </div>
+                          </CommandItem>
+                        ))}
+                    </ScrollArea>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </div>
+
+            {/* Selected Items */}
+            {selectedFoodItems.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Selected Items</Label>
+                  <Badge variant="secondary">
+                    {Math.round(totalNutrition.calories)} cal
+                  </Badge>
+                </div>
+                <ScrollArea className="h-32 border rounded-lg p-2">
+                  <div className="space-y-2">
+                    {selectedFoodItems.map((food) => (
+                      <div
+                        key={food.id}
+                        className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{food.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {food.quantity}x serving
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() =>
+                            handleRemoveFoodItem(food.id.toString())
+                          }
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            {selectedFoodItems.length > 0 && (
+              <Button
+                onClick={handleSubmit}
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                )}
+                Log Meal ({Math.round(totalNutrition.calories)} Cal)
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   };
 
-  const renderSuccess = () => (
-    <div className="flex flex-col items-center justify-center py-10">
-      <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-      <h3 className="text-2xl font-medium mb-1">Meal Logged!</h3>
-      <p className="text-muted-foreground text-center">
-        Your nutrition data has been updated.
-      </p>
-    </div>
-  );
-
   return (
-    <div className="max-w-lg mx-auto pb-8">
-      <h1 className="text-3xl font-bold tracking-tight mb-6 text-center">
-        Log Food
-      </h1>
-
-      <Card className="shadow-md">
-        <CardContent className="pt-6">
-          {submitted ? (
-            renderSuccess()
-          ) : (
-            <>
-              {isLoading && step === 1 && diningHalls.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-                  <p className="text-muted-foreground">
-                    Loading Dining Halls...
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {step === 1 && renderStep1()}
-                  {step === 2 && renderStep2()}
-                  {step === 3 && renderStep3()}
-                </>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      {isMobile ? <MobileLayout /> : <DesktopLayout />}
+      {/* Toast notifications */}
+      <Toaster />
+    </>
   );
 }

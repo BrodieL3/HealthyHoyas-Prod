@@ -6,7 +6,7 @@ import { Dashboard } from "@/components/dashboard";
 import { LogFood } from "@/components/log-food";
 import { WeighIn } from "@/components/weigh-in";
 import { Settings } from "@/components/settings";
-import { Layout } from "@/components/layout";
+import { Layout } from "@/components/nt-layout";
 
 // Define props type
 interface NutritionTrackerProps {

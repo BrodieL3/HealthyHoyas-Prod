@@ -1,328 +1,214 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  UtensilsCrossed,
-  Weight,
-  Footprints,
-  Moon,
-  ArrowRight,
-} from "lucide-react";
-import { MacroChart } from "@/components/macro-chart";
+import { format } from "date-fns";
+import { AlertCircle, PlusCircle } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 import {
   getUserMeals,
   getDailyNutritionSummary,
-  getCurrentUser,
-  type MealWithDetails,
+  type MealWithFoodItems,
   type DailyNutritionSummary,
-} from "@/lib/meals";
-import { format, parseISO } from "date-fns";
+  getUserProfile,
+  type UserProfile,
+} from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
-// Define props type for Dashboard
+import { NutritionRadialCharts } from "@/components/nutrition-radial-chart";
+import { CalorieRadialChart } from "@/components/calorie-radial-chart";
+import { RecentMeals } from "@/components/recent-meals";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeaderDate } from "@/components/page-header-date";
+
+// Default recommended macro distribution
+const DEFAULT_PROTEIN_PCT = 25;
+const DEFAULT_CARBS_PCT = 50;
+const DEFAULT_FAT_PCT = 25;
+
 interface DashboardProps {
-  setActiveTab: (tab: string) => void;
-  userId: string;
+  fallbackSkeletons?: {
+    cardSkeleton: React.ReactNode;
+    listSkeleton: React.ReactNode;
+    statSkeleton: React.ReactNode;
+  };
 }
 
-export function Dashboard({ setActiveTab, userId }: DashboardProps) {
-  const [recentMeals, setRecentMeals] = useState<MealWithDetails[]>([]);
+export function Dashboard({ fallbackSkeletons }: DashboardProps) {
+  const router = useRouter();
+  const [meals, setMeals] = useState<MealWithFoodItems[]>([]);
   const [nutritionSummary, setNutritionSummary] =
     useState<DailyNutritionSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch data using the passed userId prop
+  // Fetch all dashboard data
   useEffect(() => {
-    async function fetchData() {
-      if (!userId) return;
+    fetchDashboardData();
+  }, []);
 
-      setIsLoading(true);
-      try {
-        // Get today's date in YYYY-MM-DD format
-        const today = format(new Date(), "yyyy-MM-dd");
+  // Function to fetch dashboard data
+  async function fetchDashboardData() {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // Fetch recent meals
-        const meals = await getUserMeals(userId, 5);
-        setRecentMeals(meals);
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        // Fetch nutrition summary for today
-        const summary = await getDailyNutritionSummary(userId, today);
-        setNutritionSummary(summary);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setIsLoading(false);
+      if (!user) {
+        setError("Please sign in to view your dashboard");
+        return;
       }
+
+      const today = format(new Date(), "yyyy-MM-dd");
+      const [mealsData, summaryData, profileData] = await Promise.all([
+        getUserMeals(user.id, 5),
+        getDailyNutritionSummary(user.id, today),
+        getUserProfile(user.id),
+      ]);
+
+      setMeals(mealsData);
+      setNutritionSummary(summaryData);
+      setUserProfile(profileData);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      setError("Failed to load dashboard data. Please try again later.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    if (userId) {
-      fetchData();
-    }
-  }, [userId]);
+  // Handle meal updates
+  const handleMealUpdated = () => {
+    fetchDashboardData();
+  };
 
-  // Calculate remaining calories
-  const dailyCalorieGoal = 2000;
-  const consumedCalories = nutritionSummary?.total_calories || 0;
-  const remainingCalories = dailyCalorieGoal - consumedCalories;
-  const caloriePercentage = Math.min(
-    100,
-    (consumedCalories / dailyCalorieGoal) * 100
-  );
+  // Calculate macronutrient goals based on TDEE
+  const dailyCalorieGoal =
+    userProfile?.calorie_goal || userProfile?.tdee || 2000;
 
-  // Format macros for the chart
+  // Use user's custom macro percentages if available, otherwise use defaults
+  const proteinPct = userProfile?.protein_pct ?? DEFAULT_PROTEIN_PCT;
+  const carbsPct = userProfile?.carbs_pct ?? DEFAULT_CARBS_PCT;
+  const fatPct = userProfile?.fat_pct ?? DEFAULT_FAT_PCT;
+
+  // Calculate macro targets based on percentages
+  // - Protein: proteinPct% of calories (4 calories per gram)
+  // - Carbs: carbsPct% of calories (4 calories per gram)
+  // - Fat: fatPct% of calories (9 calories per gram)
+  const proteinGoal = Math.round((dailyCalorieGoal * (proteinPct / 100)) / 4);
+  const carbsGoal = Math.round((dailyCalorieGoal * (carbsPct / 100)) / 4);
+  const fatGoal = Math.round((dailyCalorieGoal * (fatPct / 100)) / 9);
+
   const macroData = [
     {
       name: "Protein",
       value: nutritionSummary?.total_protein || 0,
-      goal: 120,
-      color: "#3b82f6",
+      goal: proteinGoal,
+      color: "#22c55e",
+      unit: "g",
     },
     {
       name: "Carbs",
       value: nutritionSummary?.total_carbs || 0,
-      goal: 200,
-      color: "#22c55e",
+      goal: carbsGoal,
+      color: "#eab308",
+      unit: "g",
     },
     {
       name: "Fat",
       value: nutritionSummary?.total_fat || 0,
-      goal: 65,
-      color: "#eab308",
+      goal: fatGoal,
+      color: "#3b82f6",
+      unit: "g",
     },
   ];
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
+        {/* Header */}
+        <div className="bg-transparent backdrop-blur-md pl-20 pr-6 py-4 sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                <p className="text-gray-600 mt-1">
+                  Your health and nutrition overview
+                </p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <PageHeaderDate />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Content */}
+        <div className="max-w-7xl mx-auto pl-20 pr-6 py-6">
+          <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-md">
+            <AlertCircle className="h-5 w-5" />
+            <p>{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Daily Nutrition Summary
-        </h1>
-        <div className="text-sm text-muted-foreground">
-          {format(new Date(), "EEEE, MMMM d, yyyy")}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
+      {/* Header */}
+      <div className="bg-transparent backdrop-blur-md pl-20 pr-6 py-4 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-gray-600 mt-1">
+                Your health and nutrition overview
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <PageHeaderDate />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Calories</CardTitle>
-            <CardDescription>
-              Daily Goal: {dailyCalorieGoal.toLocaleString()} kcal
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {Math.round(consumedCalories).toLocaleString()}
-            </div>
-            <div className="mt-1 h-2 w-full rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${caloriePercentage}%` }}
-              ></div>
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {remainingCalories > 0
-                ? `${Math.round(
-                    remainingCalories
-                  ).toLocaleString()} kcal remaining`
-                : "Daily goal reached"}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto pl-20 pr-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+          {/* Left column - Macros and calories (2/3 width) */}
+          <div className="space-y-4 lg:col-span-2">
+            {/* Calorie chart takes full width */}
+            <CalorieRadialChart
+              consumed={nutritionSummary?.total_calories || 0}
+              goal={dailyCalorieGoal}
+              loading={loading}
+              className="w-full h-auto"
+            />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Macronutrients</CardTitle>
-            <CardDescription>Protein, Carbs, Fat</CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <div className="h-[150px]">
-              <MacroChart data={macroData} />
-            </div>
-          </CardContent>
-        </Card>
+            <NutritionRadialCharts
+              data={macroData}
+              loading={loading}
+              className="mt-0"
+            />
+          </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Quick Actions</CardTitle>
-            <CardDescription>Log your progress</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            <Button
-              className="w-full justify-between"
-              variant="outline"
-              onClick={() => setActiveTab("log-food")}
-            >
-              <div className="flex items-center">
-                <UtensilsCrossed className="mr-2 h-4 w-4" />
-                Log Food
-              </div>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button
-              className="w-full justify-between"
-              variant="outline"
-              onClick={() => setActiveTab("weigh-in")}
-            >
-              <div className="flex items-center">
-                <Weight className="mr-2 h-4 w-4" />
-                Weigh In
-              </div>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <h2 className="text-xl font-semibold mt-6">Recent Meals</h2>
-      <div className="space-y-4">
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              Loading recent meals...
-            </CardContent>
-          </Card>
-        ) : recentMeals.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              <p>No meals logged yet.</p>
-              <p className="text-sm mt-1">Start by logging your first meal!</p>
-            </CardContent>
-          </Card>
-        ) : (
-          recentMeals.map((meal) => {
-            // Get the meal period name
-            const mealPeriodName = meal.daily_menu?.meal_period?.name || "Meal";
-            // Get dining hall name if it exists
-            const diningHallName = meal.daily_menu?.dining_hall?.name;
-            // Get creation date and format it
-            const createdAt = meal.created_at
-              ? format(parseISO(meal.created_at), "MMM d")
-              : "";
-            // Get date from daily menu if available
-            const menuDate = meal.daily_menu?.date
-              ? format(parseISO(meal.daily_menu.date), "MMM d")
-              : "";
-            // Use menu date if available, otherwise fall back to meal creation date
-            const displayDate = menuDate || createdAt;
-
-            return (
-              <Card key={meal.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-base flex items-center">
-                      <UtensilsCrossed className="mr-2 h-4 w-4" />
-                      {mealPeriodName}
-                      {diningHallName && (
-                        <span className="ml-2 text-sm font-normal text-muted-foreground">
-                          at {diningHallName}
-                        </span>
-                      )}
-                    </CardTitle>
-                    <span className="text-sm text-muted-foreground">
-                      {displayDate}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1">
-                    {meal.meal_items.map((item, index) => {
-                      const food = item.food_items;
-                      const quantity = item.quantity;
-                      if (!food) return null;
-
-                      return (
-                        <div
-                          key={`${meal.id}-${food.id}-${index}`}
-                          className="flex justify-between text-sm"
-                        >
-                          <span>
-                            {food.name} {quantity !== 1 && `(${quantity}x)`}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {Math.round((food.calories || 0) * quantity)} cal
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex justify-between mt-4 pt-2 border-t text-sm font-medium">
-                    <span>Total</span>
-                    <span>
-                      {Math.round(
-                        meal.meal_items.reduce((sum, item) => {
-                          const food = item.food_items;
-                          const quantity = item.quantity;
-                          return sum + (food?.calories || 0) * quantity;
-                        }, 0)
-                      )}{" "}
-                      calories
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
-
-      <h2 className="text-xl font-semibold mt-6">Activity Summary</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center">
-              <Footprints className="mr-2 h-4 w-4" />
-              Steps
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">7,842</div>
-            <div className="text-xs text-muted-foreground">Goal: 10,000</div>
-            <div className="mt-1 h-2 w-full rounded-full bg-muted">
-              <div className="h-full w-[78%] rounded-full bg-green-500"></div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center">
-              <Moon className="mr-2 h-4 w-4" />
-              Sleep
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">7.5 hrs</div>
-            <div className="text-xs text-muted-foreground">Goal: 8 hours</div>
-            <div className="mt-1 h-2 w-full rounded-full bg-muted">
-              <div className="h-full w-[94%] rounded-full bg-blue-500"></div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center">
-              <Weight className="mr-2 h-4 w-4" />
-              Current Weight
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">165 lbs</div>
-            <div className="text-xs text-muted-foreground">Goal: 160 lbs</div>
-            <div className="flex items-center text-xs text-green-500 mt-1">
-              <span>↓ 0.5 lbs from last week</span>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Right column (1/3 width) */}
+          <div className="space-y-4 lg:col-span-1">
+            {/* Recent meals */}
+            <RecentMeals
+              meals={meals}
+              loading={loading}
+              className="h-full overflow-auto"
+              onMealUpdated={handleMealUpdated}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

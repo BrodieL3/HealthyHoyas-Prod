@@ -1,33 +1,26 @@
-"use client"
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ClientLayout } from "@/components/client-layout";
+import { UserProvider } from "@/providers/user-provider";
+import { getUserPromise } from "@/lib/auth-server";
 
-import { useState, useEffect } from 'react'
-import { Inter } from 'next/font/google'
-import { usePathname } from 'next/navigation'
-import './globals.css'
-import { Layout } from '@/components/layout'
-
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
-  const [activeTab, setActiveTab] = useState("dashboard")
-  const pathname = usePathname()
-  
-  // Check if the current path is an auth page
-  const isAuthPage = pathname?.startsWith('/auth') || pathname === '/login'
-  
+}: {
+  children: React.ReactNode;
+}) {
+  // Create user promise on server (don't await it!)
+  const userPromise = getUserPromise();
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        {isAuthPage ? (
-          children
-        ) : (
-          children
-        )}
+        <UserProvider userPromise={userPromise}>
+          <ClientLayout>{children}</ClientLayout>
+        </UserProvider>
       </body>
     </html>
-  )
+  );
 }
