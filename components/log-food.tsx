@@ -81,6 +81,7 @@ import { logUserMeal } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { FoodSearch } from "@/components/food-search";
+import { dataEntryToasts, errorToasts, loadingToasts } from "@/lib/toast-utils";
 
 // Define props type
 interface LogFoodProps {
@@ -363,34 +364,28 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
 
   const handleSubmit = async () => {
     if (!userId) {
-      toast({
-        title: "Authentication Required",
-        description: "You must be logged in to log a meal",
-        variant: "destructive",
-      });
+      errorToasts.auth();
       return;
     }
 
     if (selectedFoodItems.length === 0) {
-      toast({
-        title: "No Items Selected",
-        description: "Please add at least one food item to your meal",
-        variant: "destructive",
-      });
+      errorToasts.validation("Please add at least one food item to your meal");
       return;
     }
 
     if (!selectedMealType) {
-      toast({
-        title: "Meal Type Required",
-        description: "Please select a meal type (Breakfast, Lunch, or Dinner)",
-        variant: "destructive",
-      });
+      errorToasts.validation(
+        "Please select a meal type (Breakfast, Lunch, or Dinner)"
+      );
       return;
     }
 
     setIsLoading(true);
+
     try {
+      // Show loading toast
+      const loadingToastId = loadingToasts.saving("meal");
+
       const result = await logUserMeal({
         userId,
         mealType: selectedMealType,
@@ -411,14 +406,14 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
       });
 
       if (result && result.id) {
-        toast({
-          title: "Meal Logged Successfully! 🎉",
-          description: `${selectedMealType} with ${Math.round(
+        // Show success toast with meal details
+        dataEntryToasts.mealSaved(
+          `${selectedMealType} (${Math.round(
             totalNutrition.calories
-          )} calories has been saved.`,
-        });
+          )} calories)`
+        );
 
-        // Reset form
+        // Reset form with animation
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);
@@ -432,15 +427,11 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
           setMealNotes("");
           setSelectedFoodItems([]);
           setSearchQuery("");
-        }, 2000);
+        }, 3000);
       }
     } catch (error) {
       console.error("Error submitting meal:", error);
-      toast({
-        title: "Error Logging Meal",
-        description: "There was an error logging your meal. Please try again.",
-        variant: "destructive",
-      });
+      errorToasts.saveFailed("meal");
     } finally {
       setIsLoading(false);
     }
@@ -476,28 +467,31 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
       {/* Left Sidebar - Filters & Selection */}
       <div className="col-span-3 space-y-4">
         {/* Dining Hall Selection - Scrollable */}
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card
+          hoverable
+          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
-              <MapPin className="h-5 w-5 mr-2 text-blue-500" />
+              <MapPin className="h-5 w-5 mr-2 text-blue-500 animate-wiggle" />
               Dining Location
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-48 px-4">
+            <ScrollArea className="h-64 px-4">
               <div className="space-y-2 py-2">
                 {/* All Locations Option */}
                 <div
-                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
                     !diningHallId
                       ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:-translate-y-0.5"
                   }`}
                   onClick={() => handleDiningHallSelect("all")}
                 >
                   <div className="flex items-center space-x-3">
                     <div
-                      className={`w-3 h-3 rounded-full ${
+                      className={`w-3 h-3 rounded-full transition-all duration-200 ${
                         !diningHallId ? "bg-blue-500" : "bg-gray-300"
                       }`}
                     />
@@ -516,16 +510,16 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                 {diningHalls.map((hall) => (
                   <div
                     key={hall.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
                       diningHallId === hall.id
                         ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:-translate-y-0.5"
                     }`}
                     onClick={() => handleDiningHallSelect(hall.id)}
                   >
                     <div className="flex items-center space-x-3">
                       <div
-                        className={`w-3 h-3 rounded-full ${
+                        className={`w-3 h-3 rounded-full transition-all duration-200 ${
                           diningHallId === hall.id
                             ? "bg-blue-500"
                             : "bg-gray-300"
@@ -536,7 +530,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                           {hall.name}
                         </div>
                         {diningHallId === hall.id && (
-                          <div className="text-xs text-blue-600">
+                          <div className="text-xs text-blue-600 animate-fade-in-up">
                             Currently selected
                           </div>
                         )}
@@ -551,10 +545,13 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
 
         {/* Meal Period Selection - Show when dining hall is selected */}
         {diningHallId && (
-          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+          <Card
+            hoverable
+            className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift animate-fade-in-down"
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center">
-                <Clock className="h-5 w-5 mr-2 text-green-500" />
+                <Clock className="h-5 w-5 mr-2 text-green-500 animate-wiggle" />
                 Meal Period
               </CardTitle>
             </CardHeader>
@@ -587,36 +584,39 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
         )}
 
         {/* Nutrition Summary */}
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card
+          hoverable
+          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2 text-red-500" />
+              <TrendingUp className="h-5 w-5 mr-2 text-red-500 animate-wiggle" />
               Nutrition Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
             {selectedFoodItems.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fade-in-up">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-500">
+                  <div className="text-2xl font-bold text-red-500 animate-bounce-in">
                     {Math.round(totalNutrition.calories)}
                   </div>
                   <div className="text-sm text-gray-500">Calories</div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded transition-colors duration-200">
                     <span className="text-sm text-gray-600">Protein:</span>
                     <span className="font-semibold text-green-500">
                       {Math.round(totalNutrition.protein)}g
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded transition-colors duration-200">
                     <span className="text-sm text-gray-600">Carbs:</span>
                     <span className="font-semibold text-yellow-500">
                       {Math.round(totalNutrition.carbs)}g
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded transition-colors duration-200">
                     <span className="text-sm text-gray-600">Fat:</span>
                     <span className="font-semibold text-blue-500">
                       {Math.round(totalNutrition.fat)}g
@@ -639,10 +639,13 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
 
       {/* Main Content Area - Food Search */}
       <div className="col-span-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 h-full">
+        <Card
+          hoverable
+          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 h-full hover-lift"
+        >
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
-              <Search className="h-5 w-5 mr-2 text-orange-500" />
+              <Search className="h-5 w-5 mr-2 text-orange-500 animate-wiggle" />
               Food Selection
             </CardTitle>
             <p className="text-gray-600">
@@ -679,8 +682,8 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
               </div>
 
               {selectedFoodItems.length === 0 ? (
-                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-                  <Target className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg animate-fade-in-up">
+                  <Target className="h-8 w-8 text-gray-400 mx-auto mb-3 animate-wiggle" />
                   <p className="text-gray-500 font-medium">
                     No items added yet
                   </p>
@@ -691,10 +694,11 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
               ) : (
                 <ScrollArea className="h-80 border rounded-lg">
                   <div className="p-4 space-y-3">
-                    {selectedFoodItems.map((food) => (
+                    {selectedFoodItems.map((food, index) => (
                       <div
                         key={food.id}
-                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 animate-fade-in-up"
+                        style={{ animationDelay: `${index * 0.1}s` }}
                       >
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">
@@ -709,7 +713,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-7 w-7 hover:scale-110 transition-transform duration-200"
                             onClick={() =>
                               handleUpdateFoodQuantity(
                                 food.id.toString(),
@@ -726,7 +730,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-7 w-7 hover:scale-110 transition-transform duration-200"
                             onClick={() =>
                               handleUpdateFoodQuantity(
                                 food.id.toString(),
@@ -739,7 +743,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-red-500"
+                            className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 hover:scale-110 transition-all duration-200"
                             onClick={() =>
                               handleRemoveFoodItem(food.id.toString())
                             }
@@ -760,7 +764,10 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
       {/* Right Sidebar - Meal Details */}
       <div className="col-span-3 space-y-4">
         {/* Meal Details - Moved to top */}
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card
+          hoverable
+          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Meal Details</CardTitle>
           </CardHeader>
@@ -773,7 +780,9 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                   <Button
                     key={type}
                     variant={selectedMealType === type ? "default" : "outline"}
-                    className="w-full justify-center h-9 text-sm"
+                    className={cn(
+                      "w-full justify-center h-9 text-sm transition-all duration-200"
+                    )}
                     onClick={() => setSelectedMealType(type)}
                   >
                     {type}
@@ -791,7 +800,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal transition-all duration-200 hover:shadow-md",
                         !mealDate && "text-muted-foreground"
                       )}
                     >
@@ -818,6 +827,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                   type="time"
                   value={mealTime}
                   onChange={(e) => setMealTime(e.target.value)}
+                  className="transition-all duration-200 hover:shadow-md"
                 />
               </div>
             </div>
@@ -830,6 +840,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                 onChange={(e) => setMealNotes(e.target.value)}
                 placeholder="Add any notes about this meal..."
                 rows={3}
+                className="transition-all duration-200 hover:shadow-md"
               />
             </div>
           </CardContent>
@@ -838,22 +849,19 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
         {/* Submit Button */}
         <Button
           onClick={handleSubmit}
-          className="w-full h-12 text-lg"
+          className="w-full h-12 text-lg transition-all duration-200 hover:shadow-lg"
           disabled={
             selectedFoodItems.length === 0 || isLoading || !selectedMealType
           }
           size="lg"
+          loading={isLoading}
         >
-          {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin mr-2" />
-          ) : (
-            <CheckCircle2 className="h-5 w-5 mr-2" />
+          {!isLoading && (
+            <>
+              <CheckCircle2 className="h-5 w-5 mr-2" />
+              Log {selectedMealType || "Meal"}
+            </>
           )}
-          Log {selectedMealType || "Meal"} (
-          <span className="text-primary-foreground/90 ml-1">
-            {Math.round(totalNutrition.calories)} Cal
-          </span>
-          )
         </Button>
       </div>
     </div>
@@ -864,13 +872,16 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
     if (submitted) {
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 w-full max-w-md">
+          <Card
+            hoverable
+            className="shadow-lg bg-white/80 backdrop-blur-sm border-0 w-full max-w-md animate-bounce-in"
+          >
             <CardContent className="pt-8 pb-8 text-center">
-              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4 animate-pulse-success" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2 animate-fade-in-up">
                 Meal Logged!
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-600 animate-fade-in-up">
                 Your nutrition data has been updated successfully.
               </p>
             </CardContent>
@@ -1036,7 +1047,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                 ) : (
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                 )}
-                Log Meal ({Math.round(totalNutrition.calories)} Cal)
+                Log Meal
               </Button>
             )}
           </CardContent>

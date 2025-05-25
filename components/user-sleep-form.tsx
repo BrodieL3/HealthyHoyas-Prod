@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Moon, CheckCircle2, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { dataEntryToasts, errorToasts, loadingToasts } from "@/lib/toast-utils";
 
 export function UserSleepForm({
   onSleepLogged,
@@ -29,6 +29,7 @@ export function UserSleepForm({
   const [sleepQuality, setSleepQuality] = useState([7]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -53,10 +54,14 @@ export function UserSleepForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!sleep) return;
+    if (!sleep) {
+      setValidationError(true);
+      setTimeout(() => setValidationError(false), 500);
+      return;
+    }
 
     if (!user?.id) {
-      setError("Please sign in to log your sleep");
+      errorToasts.auth();
       return;
     }
 
@@ -68,10 +73,15 @@ export function UserSleepForm({
       const qualityValue = sleepQuality[0];
 
       if (isNaN(sleepValue) || sleepValue <= 0) {
-        setError("Please enter a valid sleep duration.");
+        setValidationError(true);
+        errorToasts.invalidSleep();
         setIsLoading(false);
+        setTimeout(() => setValidationError(false), 500);
         return;
       }
+
+      // Show loading toast
+      const loadingToastId = loadingToasts.saving("sleep");
 
       const today = new Date().toISOString().split("T")[0];
 
@@ -87,20 +97,19 @@ export function UserSleepForm({
         setSleep("");
         setSleepQuality([7]);
 
-        toast.success("Sleep logged successfully!");
+        // Show success toast
+        dataEntryToasts.sleepLogged(sleepValue);
         onSleepLogged();
 
         setTimeout(() => {
           setSubmitted(false);
-        }, 2000);
+        }, 3000);
       } else {
-        setError("Failed to log sleep. Please try again.");
-        toast.error("Failed to log sleep. Please try again.");
+        errorToasts.saveFailed("sleep");
       }
     } catch (error) {
       console.error("Error saving sleep:", error);
-      setError("An error occurred. Please try again.");
-      toast.error("An error occurred. Please try again.");
+      errorToasts.generic("An error occurred while saving your sleep data.");
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +117,10 @@ export function UserSleepForm({
 
   if (authLoading) {
     return (
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card
+        hoverable
+        className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
+      >
         <CardContent className="flex justify-center items-center py-12">
           <p className="text-muted-foreground">Loading...</p>
         </CardContent>
@@ -118,7 +130,10 @@ export function UserSleepForm({
 
   if (!user) {
     return (
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card
+        hoverable
+        className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
+      >
         <CardContent className="flex justify-center items-center py-12">
           <p className="text-muted-foreground">Please sign in to log sleep</p>
         </CardContent>
@@ -127,10 +142,13 @@ export function UserSleepForm({
   }
 
   return (
-    <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+    <Card
+      hoverable
+      className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
+    >
       <CardHeader>
         <CardTitle className="text-xl flex items-center">
-          <Moon className="h-5 w-5 mr-2 text-blue-500" />
+          <Moon className="h-5 w-5 mr-2 text-blue-500 animate-wiggle" />
           Log Your Sleep
         </CardTitle>
         <CardDescription>
@@ -139,19 +157,19 @@ export function UserSleepForm({
       </CardHeader>
       <CardContent>
         {submitted ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          <div className="flex flex-col items-center justify-center py-12 animate-bounce-in">
+            <CheckCircle2 className="h-16 w-16 text-green-500 mb-4 animate-pulse-success" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-2 animate-fade-in-up">
               Sleep Logged Successfully!
             </h3>
-            <p className="text-gray-600 text-center">
+            <p className="text-gray-600 text-center animate-fade-in-up">
               Your sleep data has been recorded.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+              <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 animate-shake">
                 <AlertCircle className="h-5 w-5 flex-shrink-0" />
                 <p>{error}</p>
               </div>
@@ -176,6 +194,7 @@ export function UserSleepForm({
                     min="0"
                     max="24"
                     step="0.5"
+                    error={validationError}
                   />
                 </div>
                 <span className="text-gray-600 font-medium">hours</span>
@@ -200,24 +219,20 @@ export function UserSleepForm({
                   disabled={isLoading}
                 />
               </div>
-              <div className="flex justify-between text-xs text-gray-500 px-2">
-                <span>Poor (1)</span>
-                <span>Excellent (10)</span>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Poor</span>
+                <span>Excellent</span>
               </div>
             </div>
 
             <Button
               type="submit"
               className="w-full h-12 text-lg"
-              disabled={isLoading}
+              disabled={isLoading || !user?.id}
               size="lg"
+              loading={isLoading}
             >
-              {isLoading ? (
-                <>
-                  <CheckCircle2 className="mr-2 h-5 w-5 animate-spin" />
-                  Logging Sleep...
-                </>
-              ) : (
+              {!isLoading && (
                 <>
                   <Moon className="mr-2 h-5 w-5" />
                   Log Sleep

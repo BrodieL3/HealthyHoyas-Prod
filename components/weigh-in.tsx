@@ -30,7 +30,7 @@ import {
   getUserWeightEntries,
   type WeightEntry,
 } from "@/lib/supabase";
-import { toast } from "sonner";
+import { dataEntryToasts, errorToasts, loadingToasts } from "@/lib/toast-utils";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -51,14 +51,19 @@ function WeightForm({
   const [weight, setWeight] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!weight) return;
+    if (!weight) {
+      setValidationError(true);
+      setTimeout(() => setValidationError(false), 500);
+      return;
+    }
 
     if (!userId) {
-      setError("Please sign in to log your weight");
+      errorToasts.auth();
       return;
     }
 
@@ -69,10 +74,15 @@ function WeightForm({
       const weightValue = parseFloat(weight);
 
       if (isNaN(weightValue) || weightValue <= 0) {
-        setError("Please enter a valid weight value.");
+        setValidationError(true);
+        errorToasts.invalidWeight();
         setIsLoading(false);
+        setTimeout(() => setValidationError(false), 500);
         return;
       }
+
+      // Show loading toast
+      const loadingToastId = loadingToasts.saving("weight");
 
       const result = await saveWeightEntry(userId, weightValue);
 
@@ -80,22 +90,21 @@ function WeightForm({
         setSubmitted(true);
         setWeight("");
 
-        toast.success("Weight logged successfully!");
+        // Show success toast
+        dataEntryToasts.weightLogged(weightValue);
 
         // Notify parent to refresh data
         onWeightLogged();
 
         setTimeout(() => {
           setSubmitted(false);
-        }, 2000);
+        }, 3000);
       } else {
-        setError("Failed to log weight. Please try again.");
-        toast.error("Failed to log weight. Please try again.");
+        errorToasts.saveFailed("weight");
       }
     } catch (error) {
       console.error("Error saving weight:", error);
-      setError("An error occurred. Please try again.");
-      toast.error("An error occurred. Please try again.");
+      errorToasts.generic("An error occurred while saving your weight.");
     } finally {
       setIsLoading(false);
     }
@@ -103,10 +112,13 @@ function WeightForm({
 
   return (
     <div className="lg:col-span-2 space-y-6">
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card
+        hoverable
+        className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
+      >
         <CardHeader>
           <CardTitle className="text-xl flex items-center">
-            <Scale className="h-5 w-5 mr-2 text-blue-500" />
+            <Scale className="h-5 w-5 mr-2 text-blue-500 animate-wiggle" />
             Record Your Weight
           </CardTitle>
           <CardDescription>
@@ -115,19 +127,19 @@ function WeightForm({
         </CardHeader>
         <CardContent>
           {submitted ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            <div className="flex flex-col items-center justify-center py-12 animate-bounce-in">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mb-4 animate-pulse-success" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2 animate-fade-in-up">
                 Weight Logged Successfully!
               </h3>
-              <p className="text-gray-600 text-center">
+              <p className="text-gray-600 text-center animate-fade-in-up">
                 Your weight data has been updated.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+                <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 animate-shake">
                   <AlertCircle className="h-5 w-5 flex-shrink-0" />
                   <p>{error}</p>
                 </div>
@@ -151,6 +163,7 @@ function WeightForm({
                       disabled={isLoading}
                       min="0"
                       step="0.1"
+                      error={validationError}
                     />
                   </div>
                   <span className="text-gray-600 font-medium">lbs</span>
@@ -165,13 +178,9 @@ function WeightForm({
                 className="w-full h-12 text-lg"
                 disabled={isLoading || !userId}
                 size="lg"
+                loading={isLoading}
               >
-                {isLoading ? (
-                  <>
-                    <CheckCircle2 className="mr-2 h-5 w-5 animate-spin" />
-                    Logging Weight...
-                  </>
-                ) : (
+                {!isLoading && (
                   <>
                     <Scale className="mr-2 h-5 w-5" />
                     Log Weight
@@ -184,7 +193,7 @@ function WeightForm({
       </Card>
 
       {/* Chart Card - Static UI, data loaded separately */}
-      <Card>
+      <Card hoverable className="hover-lift">
         <CardHeader>
           <CardTitle className="text-xl flex items-center">
             <TrendingUp className="h-5 w-5 mr-2 text-green-500" />
@@ -197,7 +206,7 @@ function WeightForm({
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-full">
-                  <Skeleton className="h-full w-full" />
+                  <Skeleton className="h-full w-full animate-shimmer" />
                 </div>
               }
             >
@@ -299,7 +308,7 @@ function WeightStatistics({
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <Target className="h-5 w-5 mr-2 text-purple-500" />
@@ -314,7 +323,7 @@ function WeightStatistics({
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <BarChart3 className="h-5 w-5 mr-2 text-orange-500" />
@@ -345,7 +354,7 @@ function WeightStatistics({
   return (
     <div className="space-y-6">
       {/* Current Status */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center">
             <Target className="h-5 w-5 mr-2 text-purple-500" />
@@ -401,7 +410,7 @@ function WeightStatistics({
       </Card>
 
       {/* Recent Weight Entries */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center">
             <BarChart3 className="h-5 w-5 mr-2 text-orange-500" />
@@ -473,7 +482,7 @@ function WeightContent({ userId }: { userId: string }) {
       <Suspense
         fallback={
           <div className="space-y-6">
-            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
               <CardHeader>
                 <Skeleton className="h-5 w-32" />
               </CardHeader>

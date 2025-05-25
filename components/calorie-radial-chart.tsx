@@ -30,7 +30,7 @@ export function CalorieRadialChart({
     return (
       <Card
         className={cn(
-          "shadow-lg bg-white/80 backdrop-blur-sm border-0 col-span-full",
+          "shadow-lg bg-white/80 backdrop-blur-sm border-0 col-span-full hover-lift",
           className
         )}
       >
@@ -49,7 +49,7 @@ export function CalorieRadialChart({
   return (
     <Card
       className={cn(
-        "shadow-lg bg-white/80 backdrop-blur-sm border-0 col-span-full",
+        "shadow-lg bg-white/80 backdrop-blur-sm border-0 col-span-full hover-lift",
         className
       )}
     >

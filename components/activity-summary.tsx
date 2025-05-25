@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepsEntry, SleepEntry, WeightEntry } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface ActivitySummaryProps {
   stepsEntry?: StepsEntry;
@@ -36,7 +37,7 @@ export function ActivitySummary({
         compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3"
       )}
     >
-      <Card className={compact ? "h-auto" : ""}>
+      <Card className={cn("hover-lift", compact ? "h-auto" : "")}>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center">
             <Footprints className="mr-2 h-4 w-4" />
@@ -73,18 +74,18 @@ export function ActivitySummary({
             </p>
           )}
           {!compact && (
-            <Button variant="ghost" className="w-full mt-4" asChild>
-              <a href="/steps">
+            <Link href="/steps" className="w-full mt-4 block">
+              <Button variant="ghost" className="w-full">
                 Record Steps
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
+              </Button>
+            </Link>
           )}
         </CardContent>
       </Card>
 
       {compact && sleepEntry && (
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
               <Moon className="mr-2 h-4 w-4" />
@@ -114,7 +115,7 @@ export function ActivitySummary({
 
       {!compact && (
         <>
-          <Card>
+          <Card className="hover-lift">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center">
                 <Moon className="mr-2 h-4 w-4" />
@@ -148,16 +149,16 @@ export function ActivitySummary({
                   No sleep data available.
                 </p>
               )}
-              <Button variant="ghost" className="w-full mt-4" asChild>
-                <a href="/sleep">
+              <Link href="/sleep" className="w-full mt-4 block">
+                <Button variant="ghost" className="w-full">
                   Record Sleep
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover-lift">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center">
                 <Weight className="mr-2 h-4 w-4" />
@@ -185,12 +186,12 @@ export function ActivitySummary({
                   No weight entries found.
                 </p>
               )}
-              <Button variant="ghost" className="w-full mt-4" asChild>
-                <a href="/weight">
+              <Link href="/weight" className="w-full mt-4 block">
+                <Button variant="ghost" className="w-full">
                   Record Weight
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </>

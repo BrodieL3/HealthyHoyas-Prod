@@ -2,6 +2,7 @@
 
 import { Providers } from "@/providers";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar-minimal";
 import { Suspense, memo } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -30,10 +31,12 @@ const MainContent = memo(function MainContent({
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <Providers>
-      <div className="flex h-screen overflow-hidden">
-        <AppSidebar />
-        <MainContent>{children}</MainContent>
-      </div>
+      <SidebarProvider>
+        <div className="flex h-screen overflow-hidden">
+          <AppSidebar />
+          <MainContent>{children}</MainContent>
+        </div>
+      </SidebarProvider>
     </Providers>
   );
 }

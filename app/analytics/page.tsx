@@ -131,7 +131,7 @@ export default function AnalyticsPage() {
     >
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <Activity className="h-5 w-5 mr-2 text-green-500" />
@@ -152,7 +152,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <Target className="h-5 w-5 mr-2 text-blue-500" />
@@ -171,7 +171,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <TrendingUp className="h-5 w-5 mr-2 text-purple-500" />
@@ -221,7 +221,7 @@ export default function AnalyticsPage() {
         </TabsList>
 
         <TabsContent value="weight">
-          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <LineChart className="h-5 w-5" />
@@ -255,7 +255,7 @@ export default function AnalyticsPage() {
 
         <TabsContent value="activity">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart className="h-5 w-5" />
@@ -308,7 +308,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Target className="h-5 w-5" />
@@ -364,7 +364,7 @@ export default function AnalyticsPage() {
         </TabsContent>
 
         <TabsContent value="nutrition">
-          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PieChart className="h-5 w-5" />

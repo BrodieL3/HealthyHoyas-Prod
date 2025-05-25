@@ -45,7 +45,7 @@ function SleepPageShell({ children }: { children: React.ReactNode }) {
 // Static Loading Fallbacks with enhanced floating effect
 function SleepFormSkeleton() {
   return (
-    <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+    <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
       <CardHeader>
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-4 w-60" />
@@ -70,7 +70,7 @@ function SleepFormSkeleton() {
 function SleepDataSkeleton() {
   return (
     <div className="space-y-6">
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader>
           <Skeleton className="h-5 w-32" />
         </CardHeader>
@@ -81,7 +81,7 @@ function SleepDataSkeleton() {
           </div>
         </CardContent>
       </Card>
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader>
           <Skeleton className="h-5 w-32" />
         </CardHeader>

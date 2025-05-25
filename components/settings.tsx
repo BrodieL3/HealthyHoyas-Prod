@@ -608,7 +608,7 @@ export function Settings() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Bio Information Card */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="flex flex-row items-center gap-4 pb-4">
           <Avatar className="h-16 w-16">
             {avatarUrl ? (
@@ -693,7 +693,7 @@ export function Settings() {
       </Card>
 
       {/* Nutrition Preferences Card */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader>
           <CardTitle>Macro Nutrient Distribution</CardTitle>
           <CardDescription>

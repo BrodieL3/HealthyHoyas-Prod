@@ -14,6 +14,7 @@ import { MealWithFoodItems, getUserMeals } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, UtensilsCrossed, Edit, Plus, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { EditMealDialog } from "@/components/edit-meal-dialog";
 import {
   Sheet,
@@ -139,7 +140,7 @@ export function RecentMeals({
     <>
       <Card
         className={cn(
-          "shadow-lg bg-white/80 backdrop-blur-sm border-0",
+          "shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift",
           className
         )}
       >
@@ -153,12 +154,12 @@ export function RecentMeals({
         </CardHeader>
         <CardContent>
           {/* Log New Meal Button */}
-          <Button className="w-full mb-4" asChild>
-            <a href="/log-food">
+          <Link href="/log-food" className="w-full mb-4 block">
+            <Button className="w-full">
               <Plus className="h-4 w-4 mr-2" />
               Log New Meal
-            </a>
-          </Button>
+            </Button>
+          </Link>
 
           {loading ? (
             <div className="space-y-4">

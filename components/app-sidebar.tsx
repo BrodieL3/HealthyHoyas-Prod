@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
-  SidebarProvider,
   useSidebar,
   SidebarFooter,
 } from "@/components/ui/sidebar-minimal";
@@ -173,19 +172,17 @@ const SidebarToggleButton = memo(function SidebarToggleButton() {
 
 export function AppSidebar() {
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader />
-        <SidebarContent className="px-4 py-4">
-          <NavigationLinks />
-        </SidebarContent>
-        <SidebarFooter>
-          <div className="space-y-3">
-            <SidebarToggleButton />
-            <UserProfile />
-          </div>
-        </SidebarFooter>
-      </Sidebar>
-    </SidebarProvider>
+    <Sidebar>
+      <SidebarHeader />
+      <SidebarContent className="px-4 py-4">
+        <NavigationLinks />
+      </SidebarContent>
+      <SidebarFooter>
+        <div className="space-y-3">
+          <SidebarToggleButton />
+          <UserProfile />
+        </div>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

@@ -60,7 +60,7 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
   if (authLoading) {
     return (
       <div className="space-y-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardContent className="flex justify-center items-center py-12">
             <p className="text-muted-foreground">Loading...</p>
           </CardContent>
@@ -72,7 +72,7 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
   if (!user) {
     return (
       <div className="space-y-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardContent className="flex justify-center items-center py-12">
             <p className="text-muted-foreground">
               Please sign in to view sleep data
@@ -86,7 +86,7 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader>
             <div className="h-5 w-32 bg-muted rounded animate-pulse" />
           </CardHeader>
@@ -118,7 +118,7 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
   return (
     <div className="space-y-6">
       {/* Sleep Statistics */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center">
             <TrendingUp className="h-5 w-5 mr-2 text-green-500" />
@@ -178,7 +178,7 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
       </Card>
 
       {/* Recent Sleep Entries */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center">
             <BarChart3 className="h-5 w-5 mr-2 text-orange-500" />

@@ -43,7 +43,7 @@ export function NutritionRadialChart({
     return (
       <Card
         className={cn(
-          "shadow-lg bg-white/80 backdrop-blur-sm border-0",
+          "shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift",
           className
         )}
       >
@@ -62,7 +62,7 @@ export function NutritionRadialChart({
   return (
     <Card
       className={cn(
-        "shadow-lg bg-white/80 backdrop-blur-sm border-0",
+        "shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift",
         className
       )}
     >
