@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
@@ -11,14 +11,18 @@ import { cn } from "@/lib/utils";
 import { memo } from "react";
 import { LogOut } from "lucide-react";
 import { signOut } from "@/app/auth/login/actions";
+import { useAuth } from "@/providers/auth-provider";
+import { useRouter } from "next/navigation";
 
 // Inner component that uses the sidebar context
 const UserProfileContent = memo(function UserProfileContent({
   user,
   profile,
+  onSignOut,
 }: {
   user: { email: string; name?: string };
   profile: UserProfileType | null;
+  onSignOut: () => Promise<void>;
 }) {
   const { expanded } = useSidebar();
   const [showText, setShowText] = useState(expanded);
@@ -66,7 +70,7 @@ const UserProfileContent = memo(function UserProfileContent({
       <Button
         variant="ghost"
         size="icon"
-        onClick={signOut}
+        onClick={onSignOut}
         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors duration-200"
         title="Sign Out"
       >
@@ -77,44 +81,87 @@ const UserProfileContent = memo(function UserProfileContent({
 });
 
 export function UserProfile() {
-  const [user, setUser] = useState<{ email: string; name?: string } | null>(
-    null
-  );
+  const { user: authUser, loading: authLoading, refreshSession } = useAuth();
   const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const retryCountRef = useRef(0);
+  const maxRetries = 2; // Reduced from 3 to 2
+  const router = useRouter();
 
   useEffect(() => {
-    async function loadUserData() {
+    let mounted = true;
+    let retryTimeout: NodeJS.Timeout;
+
+    async function loadProfile() {
+      if (!authUser) {
+        if (mounted) {
+          setLoading(false);
+          setProfile(null);
+        }
+        return;
+      }
+
       try {
         setLoading(true);
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        setError(null);
 
-        if (user) {
-          setUser({
-            email: user.email || "",
-            name:
-              user.user_metadata?.name || user.email?.split("@")[0] || "User",
-          });
-
-          const userProfile = await getUserProfile(user.id);
+        const userProfile = await getUserProfile(authUser.id);
+        if (mounted) {
           if (userProfile) {
             setProfile(userProfile);
+            retryCountRef.current = 0; // Reset retry count on success
+          } else {
+            setError("Failed to load user profile");
+            // Retry loading profile if it fails
+            if (retryCountRef.current < maxRetries) {
+              retryCountRef.current++;
+              retryTimeout = setTimeout(loadProfile, 2000 * retryCountRef.current); // Increased backoff time
+            }
           }
         }
       } catch (error) {
-        console.error("Error loading user data:", error);
+        console.error("Error loading profile:", error);
+        if (mounted) {
+          setError("An unexpected error occurred");
+          // Retry loading profile if it fails
+          if (retryCountRef.current < maxRetries) {
+            retryCountRef.current++;
+            retryTimeout = setTimeout(loadProfile, 2000 * retryCountRef.current); // Increased backoff time
+          }
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
-    loadUserData();
-  }, []);
+    loadProfile();
 
-  if (loading) {
+    return () => {
+      mounted = false;
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+    };
+  }, [authUser]);
+
+  // Handle sign out with improved retry logic and redirect
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      await refreshSession();
+      // Redirect to sign in page
+      router.push('/auth/login');
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Only retry once after a longer delay
+      setTimeout(handleSignOut, 2000);
+    }
+  };
+
+  if (authLoading || loading) {
     return (
       <div className="flex items-center space-x-3 p-4">
         <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
@@ -127,7 +174,22 @@ export function UserProfile() {
     );
   }
 
-  if (!user) return null;
+  if (error || !authUser) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <p className="text-sm text-muted-foreground">Please sign in</p>
+      </div>
+    );
+  }
 
-  return <UserProfileContent user={user} profile={profile} />;
+  return (
+    <UserProfileContent
+      user={{
+        email: authUser.email || "",
+        name: authUser.user_metadata?.name || authUser.email?.split("@")[0] || "User",
+      }}
+      profile={profile}
+      onSignOut={handleSignOut}
+    />
+  );
 }

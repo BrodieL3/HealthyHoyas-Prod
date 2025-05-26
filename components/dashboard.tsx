@@ -48,6 +48,66 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
     fetchDashboardData();
   }, []);
 
+  // Ensure profile exists after login
+  useEffect(() => {
+    async function ensureProfile() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      // Check if profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      if (profileError && profileError.code === "PGRST116") {
+        // Profile doesn't exist, create it with defaults
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: user.id,
+            email: user.email,
+            full_name: user.email?.split("@")[0] || "User",
+            macro_settings: {
+              protein_pct: 25,
+              carbs_pct: 50,
+              fat_pct: 25,
+            },
+          });
+        if (insertError) {
+          console.error("Error creating user profile (client):", insertError);
+        } else {
+          // Optionally, refetch dashboard data
+          fetchDashboardData();
+        }
+      }
+    }
+    ensureProfile();
+  }, []);
+
+  // Redirect to profile setup if profile is missing or incomplete
+  useEffect(() => {
+    async function checkProfile() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      // You can add more checks for completeness if you want
+      if (!profile || !profile.full_name || !profile.age || !profile.height || !profile.weight ||
+        !profile.sex || !profile.activity_level || !profile.calorie_goal) 
+        {
+        router.push("/profile-setup");
+      }
+    }
+    checkProfile();
+  }, [router]);
+
   // Function to fetch dashboard data
   async function fetchDashboardData() {
     try {

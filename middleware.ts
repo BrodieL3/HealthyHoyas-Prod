@@ -12,7 +12,7 @@ export const config = {
      * - auth routes and login pages
      * - public assets
      */
-    "/((?!_next/static|_next/image|_next/webpack|favicon.ico|api|login|auth|sign-up|forgot-password|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|_next/webpack|favicon.ico|api|auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
 

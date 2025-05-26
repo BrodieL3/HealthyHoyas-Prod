@@ -606,7 +606,7 @@ export function Settings() {
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
       {/* Bio Information Card */}
       <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="flex flex-row items-center gap-4 pb-4">
@@ -663,7 +663,7 @@ export function Settings() {
 
             {/* TDEE Section */}
             <div className="flex items-center justify-between py-3 border-b">
-              <div className="text-sm">TDEE</div>
+              <div className="text-sm">TDEE (Total Daily Energy Expenditure): Maintenance Calories</div>
               <div className="flex items-center gap-2">
                 <span className="font-medium">
                   {profile?.tdee ?? (
