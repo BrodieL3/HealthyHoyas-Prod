@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
     Card,
     CardContent,
@@ -5,8 +6,10 @@ import {
     CardHeader,
     CardTitle,
   } from '@/components/ui/card'
-  
-  export default function Page() {
+import { Button } from '@/components/ui/button'
+import { SignUpSuccessButton } from "@/components/sign-up-success-button";
+
+export default function Page() {
     return (
       <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-sm">
@@ -17,10 +20,11 @@ import {
                 <CardDescription>Check your email to confirm</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-4">
                   You&apos;ve successfully signed up. Please check your email to confirm your account
                   before signing in.
                 </p>
+                <SignUpSuccessButton/>
               </CardContent>
             </Card>
           </div>

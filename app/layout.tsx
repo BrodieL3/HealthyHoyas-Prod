@@ -1,25 +1,40 @@
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClientLayout } from "@/components/client-layout";
+import { ThemeProvider } from "next-themes";
 import { UserProvider } from "@/providers/user-provider";
-import { getUserPromise } from "@/lib/auth-server";
+import { AuthProvider } from "@/providers/auth-provider";
+import { ClientLayout } from "@/components/client-layout";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Healthy Hoyas",
+  description: "Track your health and fitness goals",
+};
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Create user promise on server (don't await it!)
-  const userPromise = getUserPromise();
-
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <UserProvider userPromise={userPromise}>
-          <ClientLayout>{children}</ClientLayout>
-        </UserProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <UserProvider>
+              <div className="flex h-screen">
+                <ClientLayout>{children}</ClientLayout>
+              </div>
+            </UserProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

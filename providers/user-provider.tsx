@@ -1,44 +1,23 @@
 "use client";
 
-import { createContext, useContext, use } from "react";
-import type { User } from "@supabase/supabase-js";
+import { createContext, useContext } from "react";
+import { useAuth } from "./auth-provider";
 
-// Context to hold the user promise
-const UserContext = createContext<{
-  userPromise: Promise<User | null>;
-} | null>(null);
+const UserContext = createContext<ReturnType<typeof useAuth>>({
+  user: null,
+  loading: true,
+  error: null,
+});
 
-export function UserProvider({
-  children,
-  userPromise,
-}: {
-  children: React.ReactNode;
-  userPromise: Promise<User | null>;
-}) {
-  return (
-    <UserContext.Provider value={{ userPromise }}>
-      {children}
-    </UserContext.Provider>
-  );
+export function UserProvider({ children }: { children: React.ReactNode }) {
+  const auth = useAuth();
+  return <UserContext.Provider value={auth}>{children}</UserContext.Provider>;
 }
 
-// Hook to access user data using React.use()
-export function useUser() {
+export const useUser = () => {
   const context = useContext(UserContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useUser must be used within a UserProvider");
   }
-
-  // React.use() unwraps the promise and handles suspense automatically
-  const user = use(context.userPromise);
-  return user;
-}
-
-// Hook to access just the promise (for cases where you need the promise itself)
-export function useUserPromise() {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error("useUserPromise must be used within a UserProvider");
-  }
-  return context.userPromise;
-}
+  return context;
+};
