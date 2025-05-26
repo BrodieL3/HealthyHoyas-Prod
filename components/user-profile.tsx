@@ -84,10 +84,13 @@ export function UserProfile() {
   const { user: authUser, loading: authLoading, refreshSession } = useAuth();
   const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const retryCountRef = useRef(0);
-  const maxRetries = 2; // Reduced from 3 to 2
-  const router = useRouter();
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
 
   useEffect(() => {
     let mounted = true;
@@ -137,39 +140,17 @@ export function UserProfile() {
       }
     }
 
-    loadProfile();
 
-    return () => {
-      mounted = false;
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-      }
-    };
-  }, [authUser]);
-
-  // Handle sign out with improved retry logic and redirect
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      await refreshSession();
-      // Redirect to sign in page
-      router.push('/auth/login');
-    } catch (error) {
-      console.error("Error signing out:", error);
-      // Only retry once after a longer delay
-      setTimeout(handleSignOut, 2000);
+    if (mounted) {
+      loadUserData();
     }
-  };
+  }, [mounted]);
 
-  if (authLoading || loading) {
+  if (!mounted || loading) {
+
     return (
-      <div className="flex items-center space-x-3 p-4">
+      <div className="flex items-center justify-center p-4">
         <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
-        <div className="space-y-2 flex-1">
-          <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-          <div className="h-3 w-16 bg-muted rounded animate-pulse" />
-        </div>
-        <div className="w-8 h-8 bg-muted rounded animate-pulse" />
       </div>
     );
   }

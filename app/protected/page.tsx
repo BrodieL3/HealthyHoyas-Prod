@@ -8,7 +8,7 @@ export default async function ProtectedPage() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) {
-    redirect("/login");
+    redirect("/auth/login");
   }
 
   // If user exists, render the tracker and pass the user ID
