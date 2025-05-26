@@ -134,6 +134,8 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
     "Breakfast" | "Lunch" | "Dinner" | null
   >(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
+  const [tempQuantity, setTempQuantity] = useState<string>("");
 
   // Ref to store available foods
   const availableFoodsRef = useRef<ExtendedFoodItem[]>([]);
@@ -362,6 +364,25 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
     setSelectedFoodItems(selectedFoodItems.filter((item) => item.id !== id));
   };
 
+  const handleStartEditingQuantity = (id: string, currentQuantity: number) => {
+    setEditingQuantity(id);
+    setTempQuantity(currentQuantity.toString());
+  };
+
+  const handleFinishEditingQuantity = (id: string) => {
+    const quantity = parseFloat(tempQuantity);
+    if (!isNaN(quantity) && quantity > 0) {
+      handleUpdateFoodQuantity(id, quantity);
+    }
+    setEditingQuantity(null);
+    setTempQuantity("");
+  };
+
+  const handleCancelEditingQuantity = () => {
+    setEditingQuantity(null);
+    setTempQuantity("");
+  };
+
   const handleSubmit = async () => {
     if (!userId) {
       errorToasts.auth();
@@ -467,10 +488,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
       {/* Left Sidebar - Filters & Selection */}
       <div className="col-span-3 space-y-4">
         {/* Dining Hall Selection - Scrollable */}
-        <Card
-          hoverable
-          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
-        >
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <MapPin className="h-5 w-5 mr-2 text-blue-500 animate-wiggle" />
@@ -482,10 +500,10 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
               <div className="space-y-2 py-2">
                 {/* All Locations Option */}
                 <div
-                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  className={`p-3 rounded-lg border cursor-pointer hover-lift ${
                     !diningHallId
                       ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:-translate-y-0.5"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   }`}
                   onClick={() => handleDiningHallSelect("all")}
                 >
@@ -510,10 +528,10 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                 {diningHalls.map((hall) => (
                   <div
                     key={hall.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                    className={`p-3 rounded-lg border cursor-pointer hover-lift ${
                       diningHallId === hall.id
                         ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:-translate-y-0.5"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                     }`}
                     onClick={() => handleDiningHallSelect(hall.id)}
                   >
@@ -545,10 +563,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
 
         {/* Meal Period Selection - Show when dining hall is selected */}
         {diningHallId && (
-          <Card
-            hoverable
-            className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift animate-fade-in-down"
-          >
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift animate-fade-in-down">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center">
                 <Clock className="h-5 w-5 mr-2 text-green-500 animate-wiggle" />
@@ -584,10 +599,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
         )}
 
         {/* Nutrition Summary */}
-        <Card
-          hoverable
-          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
-        >
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <TrendingUp className="h-5 w-5 mr-2 text-red-500 animate-wiggle" />
@@ -604,19 +616,19 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                   <div className="text-sm text-gray-500">Calories</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded transition-colors duration-200">
+                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded">
                     <span className="text-sm text-gray-600">Protein:</span>
                     <span className="font-semibold text-green-500">
                       {Math.round(totalNutrition.protein)}g
                     </span>
                   </div>
-                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded transition-colors duration-200">
+                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded">
                     <span className="text-sm text-gray-600">Carbs:</span>
                     <span className="font-semibold text-yellow-500">
                       {Math.round(totalNutrition.carbs)}g
                     </span>
                   </div>
-                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded transition-colors duration-200">
+                  <div className="flex justify-between items-center hover:bg-gray-50 p-2 rounded">
                     <span className="text-sm text-gray-600">Fat:</span>
                     <span className="font-semibold text-blue-500">
                       {Math.round(totalNutrition.fat)}g
@@ -639,10 +651,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
 
       {/* Main Content Area - Food Search */}
       <div className="col-span-6">
-        <Card
-          hoverable
-          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 h-full hover-lift"
-        >
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 h-full hover-lift">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
               <Search className="h-5 w-5 mr-2 text-orange-500 animate-wiggle" />
@@ -697,8 +706,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                     {selectedFoodItems.map((food, index) => (
                       <div
                         key={food.id}
-                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 animate-fade-in-up"
-                        style={{ animationDelay: `${index * 0.1}s` }}
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
                       >
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">
@@ -713,24 +721,57 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-7 w-7 hover:scale-110 transition-transform duration-200"
+                            className="h-7 w-7"
                             onClick={() =>
                               handleUpdateFoodQuantity(
                                 food.id.toString(),
-                                food.quantity - (food.quantity > 1 ? 1 : 0.5)
+                                food.quantity - 0.5
                               )
                             }
                             disabled={food.quantity <= 0.5}
                           >
                             -
                           </Button>
-                          <span className="w-8 text-center text-sm font-medium">
-                            {food.quantity}
-                          </span>
+                          {editingQuantity === food.id.toString() ? (
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0.1"
+                              value={tempQuantity}
+                              onChange={(e) => setTempQuantity(e.target.value)}
+                              onBlur={() =>
+                                handleFinishEditingQuantity(food.id.toString())
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleFinishEditingQuantity(
+                                    food.id.toString()
+                                  );
+                                } else if (e.key === "Escape") {
+                                  handleCancelEditingQuantity();
+                                }
+                              }}
+                              className="w-16 h-7 text-center text-sm"
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="w-8 text-center text-sm font-medium cursor-pointer hover:bg-gray-200 rounded px-1 py-1"
+                              onClick={() =>
+                                handleStartEditingQuantity(
+                                  food.id.toString(),
+                                  food.quantity
+                                )
+                              }
+                              title="Click to edit quantity"
+                            >
+                              {food.quantity}
+                            </span>
+                          )}
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-7 w-7 hover:scale-110 transition-transform duration-200"
+                            className="h-7 w-7"
                             onClick={() =>
                               handleUpdateFoodQuantity(
                                 food.id.toString(),
@@ -743,7 +784,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 hover:scale-110 transition-all duration-200"
+                            className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
                             onClick={() =>
                               handleRemoveFoodItem(food.id.toString())
                             }
@@ -764,10 +805,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
       {/* Right Sidebar - Meal Details */}
       <div className="col-span-3 space-y-4">
         {/* Meal Details - Moved to top */}
-        <Card
-          hoverable
-          className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
-        >
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Meal Details</CardTitle>
           </CardHeader>
@@ -800,7 +838,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal transition-all duration-200 hover:shadow-md",
+                        "w-full justify-start text-left font-normal",
                         !mealDate && "text-muted-foreground"
                       )}
                     >
@@ -827,7 +865,6 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                   type="time"
                   value={mealTime}
                   onChange={(e) => setMealTime(e.target.value)}
-                  className="transition-all duration-200 hover:shadow-md"
                 />
               </div>
             </div>
@@ -840,7 +877,6 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
                 onChange={(e) => setMealNotes(e.target.value)}
                 placeholder="Add any notes about this meal..."
                 rows={3}
-                className="transition-all duration-200 hover:shadow-md"
               />
             </div>
           </CardContent>
@@ -849,7 +885,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
         {/* Submit Button */}
         <Button
           onClick={handleSubmit}
-          className="w-full h-12 text-lg transition-all duration-200 hover:shadow-lg"
+          className="w-full h-12 text-lg"
           disabled={
             selectedFoodItems.length === 0 || isLoading || !selectedMealType
           }
@@ -872,10 +908,7 @@ export function LogFood({ userId, initialDiningHallId }: LogFoodProps) {
     if (submitted) {
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <Card
-            hoverable
-            className="shadow-lg bg-white/80 backdrop-blur-sm border-0 w-full max-w-md animate-bounce-in"
-          >
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 w-full max-w-md animate-bounce-in">
             <CardContent className="pt-8 pb-8 text-center">
               <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4 animate-pulse-success" />
               <h3 className="text-2xl font-bold text-gray-900 mb-2 animate-fade-in-up">

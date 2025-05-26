@@ -1,11 +1,19 @@
-"use client"
+"use client";
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { type WeightEntry } from "@/lib/supabase"
-import { format, parseISO } from "date-fns"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { type WeightEntry } from "@/lib/supabase";
+import { format, parseISO } from "date-fns";
 
 interface WeightChartProps {
-  weightEntries: WeightEntry[]
+  weightEntries: WeightEntry[];
 }
 
 export function WeightChart({ weightEntries }: WeightChartProps) {
@@ -13,10 +21,10 @@ export function WeightChart({ weightEntries }: WeightChartProps) {
   const data = weightEntries
     .slice(0, 7) // Get the last 7 entries
     .reverse() // Reverse to show oldest to newest
-    .map(entry => ({
+    .map((entry) => ({
       date: format(parseISO(entry.date), "MMM d"),
-      weight: entry.weight
-    }))
+      weight: entry.weight,
+    }));
 
   // If no data, show a message
   if (data.length === 0) {
@@ -24,7 +32,7 @@ export function WeightChart({ weightEntries }: WeightChartProps) {
       <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">No weight data available yet.</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -40,11 +48,20 @@ export function WeightChart({ weightEntries }: WeightChartProps) {
       >
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-        <YAxis domain={["dataMin - 1", "dataMax + 1"]} tick={{ fontSize: 12 }} />
+        <YAxis
+          domain={["dataMin - 1", "dataMax + 1"]}
+          tick={{ fontSize: 12 }}
+        />
         <Tooltip />
-        <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+        <Line
+          type="monotone"
+          dataKey="weight"
+          stroke="#3b82f6"
+          strokeWidth={2}
+          dot={{ r: 4 }}
+          activeDot={{ r: 6 }}
+        />
       </LineChart>
     </ResponsiveContainer>
-  )
+  );
 }
-

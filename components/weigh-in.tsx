@@ -112,10 +112,7 @@ function WeightForm({
 
   return (
     <div className="lg:col-span-2 space-y-6">
-      <Card
-        hoverable
-        className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
-      >
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader>
           <CardTitle className="text-xl flex items-center">
             <Scale className="h-5 w-5 mr-2 text-blue-500 animate-wiggle" />
@@ -193,7 +190,7 @@ function WeightForm({
       </Card>
 
       {/* Chart Card - Static UI, data loaded separately */}
-      <Card hoverable className="hover-lift">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader>
           <CardTitle className="text-xl flex items-center">
             <TrendingUp className="h-5 w-5 mr-2 text-green-500" />

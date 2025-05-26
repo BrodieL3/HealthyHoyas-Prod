@@ -92,7 +92,7 @@ function StepsForm({
 
   return (
     <div className="lg:col-span-2">
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader>
           <CardTitle className="text-xl flex items-center">
             <Footprints className="h-5 w-5 mr-2 text-green-500" />
@@ -274,7 +274,7 @@ function StepsStatistics({
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader>
             <Skeleton className="h-5 w-32" />
           </CardHeader>
@@ -286,7 +286,7 @@ function StepsStatistics({
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
           <CardHeader>
             <Skeleton className="h-5 w-32" />
           </CardHeader>
@@ -295,7 +295,7 @@ function StepsStatistics({
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                  className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0"
                 >
                   <div>
                     <Skeleton className="h-4 w-16 mb-1" />
@@ -317,7 +317,7 @@ function StepsStatistics({
   return (
     <div className="space-y-6">
       {/* Steps Statistics */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center">
             <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
@@ -377,7 +377,7 @@ function StepsStatistics({
       </Card>
 
       {/* Recent Steps Entries */}
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center">
             <BarChart3 className="h-5 w-5 mr-2 text-orange-500" />
@@ -390,13 +390,13 @@ function StepsStatistics({
               {recentEntries.map((entry, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                  className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0"
                 >
                   <div>
                     <div className="font-medium text-sm">
                       {format(new Date(entry.date), "MMM d")}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       Quality: {entry.steps_quality}/10
                     </div>
                   </div>
@@ -404,7 +404,7 @@ function StepsStatistics({
                     <div className="font-semibold text-green-500">
                       {entry.steps.toLocaleString()}
                     </div>
-                    <div className="text-xs text-gray-500">steps</div>
+                    <div className="text-xs text-muted-foreground">steps</div>
                   </div>
                 </div>
               ))}
@@ -438,7 +438,7 @@ function StepsContent({ userId }: { userId: string }) {
       <Suspense
         fallback={
           <div className="space-y-6">
-            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0">
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
               <CardHeader>
                 <Skeleton className="h-5 w-32" />
               </CardHeader>

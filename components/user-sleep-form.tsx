@@ -117,10 +117,7 @@ export function UserSleepForm({
 
   if (authLoading) {
     return (
-      <Card
-        hoverable
-        className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
-      >
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardContent className="flex justify-center items-center py-12">
           <p className="text-muted-foreground">Loading...</p>
         </CardContent>
@@ -130,10 +127,7 @@ export function UserSleepForm({
 
   if (!user) {
     return (
-      <Card
-        hoverable
-        className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
-      >
+      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
         <CardContent className="flex justify-center items-center py-12">
           <p className="text-muted-foreground">Please sign in to log sleep</p>
         </CardContent>
@@ -142,10 +136,7 @@ export function UserSleepForm({
   }
 
   return (
-    <Card
-      hoverable
-      className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift"
-    >
+    <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
       <CardHeader>
         <CardTitle className="text-xl flex items-center">
           <Moon className="h-5 w-5 mr-2 text-blue-500 animate-wiggle" />
