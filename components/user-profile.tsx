@@ -82,6 +82,11 @@ export function UserProfile() {
   );
   const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     async function loadUserData() {
@@ -111,18 +116,15 @@ export function UserProfile() {
       }
     }
 
-    loadUserData();
-  }, []);
+    if (mounted) {
+      loadUserData();
+    }
+  }, [mounted]);
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
-      <div className="flex items-center space-x-3 p-4">
+      <div className="flex items-center justify-center p-4">
         <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
-        <div className="space-y-2 flex-1">
-          <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-          <div className="h-3 w-16 bg-muted rounded animate-pulse" />
-        </div>
-        <div className="w-8 h-8 bg-muted rounded animate-pulse" />
       </div>
     );
   }

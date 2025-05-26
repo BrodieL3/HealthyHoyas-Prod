@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar-minimal";
 import { Suspense, memo } from "react";
 import { Loader2 } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 // Main content loading fallback
 function LoadingFallback() {
@@ -28,15 +29,37 @@ const MainContent = memo(function MainContent({
   );
 });
 
+// Auth layout without sidebar
+const AuthLayout = memo(function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-h-screen bg-background">
+      <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
+    </div>
+  );
+});
+
 export function ClientLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  // Check if current path is an auth page
+  const isAuthPage = pathname?.startsWith("/auth");
+
   return (
     <Providers>
-      <SidebarProvider>
-        <div className="flex h-screen overflow-hidden">
-          <AppSidebar />
-          <MainContent>{children}</MainContent>
-        </div>
-      </SidebarProvider>
+      {isAuthPage ? (
+        <AuthLayout>{children}</AuthLayout>
+      ) : (
+        <SidebarProvider>
+          <div className="flex h-screen overflow-hidden">
+            <AppSidebar />
+            <MainContent>{children}</MainContent>
+          </div>
+        </SidebarProvider>
+      )}
     </Providers>
   );
 }
