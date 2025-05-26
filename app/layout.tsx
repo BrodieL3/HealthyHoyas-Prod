@@ -29,7 +29,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             <UserProvider>
-              <div className="flex h-screen">
+              <div className="h-screen">
                 <ClientLayout>{children}</ClientLayout>
               </div>
             </UserProvider>
