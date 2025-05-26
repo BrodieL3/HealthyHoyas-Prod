@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar-minimal";
+
 import { Suspense, memo } from "react";
 import { Providers } from "@/providers";
 import { Loader2 } from "lucide-react";
@@ -60,6 +61,7 @@ const MainContentWrapper = ({ children }: { children: React.ReactNode }) => (
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+
   // Check if current path is an auth page
   const isAuth = isAuthPage(pathname);
 
@@ -78,5 +80,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
       )}
     </Providers>
+
   );
 }

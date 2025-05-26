@@ -98,17 +98,16 @@ export async function signOut() {
   
   // Sign out from Supabase
   const { error } = await supabase.auth.signOut();
-  
+
+
   if (error) {
     console.error("Error signing out:", error);
-    throw error;
+    return;
   }
 
-  // Clear any server-side session data
   revalidatePath("/", "layout");
-  
-  // The actual redirect will be handled by the client component
-  return { success: true };
+  redirect("/auth/login");
+
 }
 
 export async function getUser() {
