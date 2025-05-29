@@ -33,9 +33,21 @@ function isAuthPage(pathname: string) {
   return pathname?.startsWith("/auth");
 }
 
-// Helper function to check if the current path is an auth or profile setup page
-function isAuthOrProfilePage(pathname: string) {
-  return pathname?.startsWith("/auth") || pathname === "/profile-setup";
+// Helper function to check if the current path is the landing page
+function isLandingPage(pathname: string) {
+  return pathname === "/";
+}
+
+function isAboutPage(pathname: string) {
+  return pathname === "/about-page";
+}
+
+function isHowItWorksPage(pathname: string) {
+  return pathname === "/how-it-works-page";
+}
+
+function isFeaturesPage(pathname: string) {
+  return pathname === "/features-page";
 }
 
 // Auth layout without sidebar
@@ -61,13 +73,16 @@ const MainContentWrapper = ({ children }: { children: React.ReactNode }) => (
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-
-  // Check if current path is an auth page
+  // Check if current path is an auth page or landing page
   const isAuth = isAuthPage(pathname);
+  const isLanding = isLandingPage(pathname);
+  const isAbout = isAboutPage(pathname);
+  const isHowItWorks = isHowItWorksPage(pathname);
+  const isFeatures = isFeaturesPage(pathname);
 
   return (
     <Providers>
-      {isAuth ? (
+      {isAuth || isLanding || isAbout || isHowItWorks || isFeatures ? (
         <AuthLayout>{children}</AuthLayout>
       ) : (
         <SidebarProvider>
@@ -80,6 +95,5 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
       )}
     </Providers>
-
   );
 }
