@@ -33,6 +33,8 @@ const routes = [
   { href: "/weight", label: "Track Weight", icon: Weight },
   { href: "/analytics", label: "Analytics", icon: BarChart },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/alcohol-awareness", label: "Alcohol Awareness", icon: BarChart },
+  { href: "/drug-awareness", label: "Drug Awareness", icon: Settings },
 ];
 
 // Memoize the navigation links to prevent re-rendering

@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar-minimal";
 import { Suspense, memo } from "react";
 import { Providers } from "@/providers";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/providers/auth-provider";
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -72,19 +73,42 @@ const MainContentWrapper = ({ children }: { children: React.ReactNode }) => (
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user, loading } = useAuth();
 
-  // Check if current path is an auth page or landing page
-  const isAuth = isAuthPage(pathname);
-  const isLanding = isLandingPage(pathname);
-  const isAbout = isAboutPage(pathname);
-  const isHowItWorks = isHowItWorksPage(pathname);
-  const isFeatures = isFeaturesPage(pathname);
+  // Helper functions
+  function isAuthPage(pathname: string) {
+    return pathname?.startsWith("/auth");
+  }
+  function isLandingPage(pathname: string) {
+    return pathname === "/";
+  }
+  function isAboutPage(pathname: string) {
+    return pathname === "/about-page";
+  }
+  function isHowItWorksPage(pathname: string) {
+    return pathname === "/how-it-works-page";
+  }
+  function isFeaturesPage(pathname: string) {
+    return pathname === "/features-page";
+  }
+
+  // Show sidebar if:
+  // - Authenticated and on root (dashboard)
+  // - Or on any other protected route
+  const showSidebar = (user && isLandingPage(pathname)) || (!isAuthPage(pathname) && !isLandingPage(pathname) && !isAboutPage(pathname) && !isHowItWorksPage(pathname) && !isFeaturesPage(pathname));
+
+  // Show AuthLayout (no sidebar) if:
+  // - On auth page
+  // - On landing/about/features/how-it-works and not authenticated
+  const showAuthLayout = isAuthPage(pathname) || ((isLandingPage(pathname) || isAboutPage(pathname) || isHowItWorksPage(pathname) || isFeaturesPage(pathname)) && !user);
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
 
   return (
     <Providers>
-      {isAuth || isLanding || isAbout || isHowItWorks || isFeatures ? (
-        <AuthLayout>{children}</AuthLayout>
-      ) : (
+      {showSidebar ? (
         <SidebarProvider>
           <div className="flex min-h-screen w-full">
             <AppSidebar />
@@ -93,6 +117,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             </MainContentWrapper>
           </div>
         </SidebarProvider>
+      ) : (
+        <AuthLayout>{children}</AuthLayout>
       )}
     </Providers>
   );
