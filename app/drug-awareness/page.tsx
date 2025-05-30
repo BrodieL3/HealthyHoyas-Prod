@@ -22,6 +22,7 @@ import {
   Users,
   FileText,
   Leaf,
+  Phone,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -29,7 +30,7 @@ import Link from "next/link"
 export default function DrugAwarenessPage() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
+      {/* Header 
       <header className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
@@ -59,7 +60,7 @@ export default function DrugAwarenessPage() {
             <Button className="bg-green-600 hover:bg-green-700">Get Started</Button>
           </Link>
         </div>
-      </header>
+      </header> */}
 
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-purple-50 to-blue-50">
@@ -531,7 +532,7 @@ export default function DrugAwarenessPage() {
               can save a life.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/alcohol-awareness">
+              {/* <Link href="/alcohol-awareness">
                 <Button
                   size="lg"
                   variant="outline"
@@ -549,7 +550,7 @@ export default function DrugAwarenessPage() {
                   Track Your Health
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>
@@ -605,7 +606,7 @@ export default function DrugAwarenessPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA Section 
       <section className="py-20 bg-purple-600">
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-3xl mx-auto space-y-8">
@@ -614,7 +615,7 @@ export default function DrugAwarenessPage() {
               Track your health metrics, make informed choices, and support your overall wellness with Healthy Hoyas
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/signup">
+              {/* <Link href="/signup">
                 <Button
                   size="lg"
                   variant="secondary"
@@ -623,16 +624,103 @@ export default function DrugAwarenessPage() {
                   Start Your Health Journey
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-              </Link>
+              </Link> 
             </div>
             <p className="text-purple-100 text-sm">
               Your health and safety are our priority • Get support when you need it
             </p>
           </div>
         </div>
-      </section>
+      </section> */}
 
-      {/* Footer */}
+      {/* Help Resources */}
+<section className="py-20 bg-green-50">
+  <div className="container mx-auto px-4 text-center">
+    <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">
+      Need Help? You’re Not Alone
+    </h2>
+    <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-8">
+      If you or someone you know is struggling with substance use, reach out right away. Your campus and national resources are here 24/7.
+    </p>
+    <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
+      {/* Campus Resources */}
+      <div>
+        <Card className="border-0 shadow-lg p-6 flex flex-col h-full">
+          <CardHeader className="text-left pb-4">
+            <CardTitle className="text-2xl font-semibold text-gray-900">
+              On-Campus Support
+            </CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              It’s vital to know your university’s hotlines:
+            </p>
+          </CardHeader>
+          <CardContent className="mt-4 space-y-4 flex-grow">
+            <div className="flex items-start space-x-3">
+              <Shield className="w-6 h-6 text-green-600 mt-1" />
+              <span className="font-medium text-gray-800">Student Health Center</span>
+            </div>
+            <div className="flex items-start space-x-3">
+              <Users className="w-6 h-6 text-blue-600 mt-1" />
+              <span className="font-medium text-gray-800">Counseling &amp; Psychological Services</span>
+            </div>
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="w-6 h-6 text-red-600 mt-1" />
+              <span className="font-medium text-gray-800">Campus Security</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* National Hotlines */}
+      <div>
+        <Card className="border-0 shadow-lg p-6 flex flex-col h-full">
+          <CardHeader className="text-left pb-4">
+            <CardTitle className="text-2xl font-semibold text-gray-900">
+              National Resources
+            </CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              24/7 helplines and online support:
+            </p>
+          </CardHeader>
+          <CardContent className="mt-4 space-y-4 flex-grow">
+            <div className="flex items-start space-x-3">
+              <Phone className="w-6 h-6 text-purple-600 mt-1" />
+              <span className="font-medium text-gray-800">
+                SAMHSA Helpline: <a href="tel:1-800-662-4357" className="text-green-600 underline">1-800-662-HELP</a>
+              </span>
+            </div>
+            <div className="flex items-start space-x-3">
+              <Thermometer className="w-6 h-6 text-red-600 mt-1" />
+              <span className="font-medium text-gray-800">
+                Poison Control: <a href="tel:1-800-222-1222" className="text-green-600 underline">1-800-222-1222</a>
+              </span>
+            </div>
+            <div className="flex items-start space-x-3">
+              <TestTube className="w-6 h-6 text-indigo-600 mt-1" />
+              <span className="font-medium text-gray-800">
+                Harm Reduction Coalition:{" "}
+                <Link
+                  href="https://harmreduction.org"
+                  className="text-green-600 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  harmreduction.org
+                </Link>
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+    <p className="text-sm text-gray-600 mt-8">
+      If it’s an emergency, always call 911 or your campus security immediately.
+    </p>
+  </div>
+</section>
+
+
+      {/* Footer 
       <footer className="py-12 bg-gray-900">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
@@ -694,7 +782,7 @@ export default function DrugAwarenessPage() {
             </p>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   )
 }

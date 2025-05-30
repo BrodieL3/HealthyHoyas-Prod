@@ -13,6 +13,8 @@ import {
   User,
   ChevronRight,
   ChevronLeft,
+  Beer,
+  Pill,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -33,8 +35,8 @@ const routes = [
   { href: "/weight", label: "Track Weight", icon: Weight },
   { href: "/analytics", label: "Analytics", icon: BarChart },
   { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/alcohol-awareness", label: "Alcohol Awareness", icon: BarChart },
-  { href: "/drug-awareness", label: "Drug Awareness", icon: Settings },
+  { href: "/alcohol-awareness", label: "Alcohol Awareness", icon: Beer },
+  { href: "/drug-awareness", label: "Drug Awareness", icon: Pill },
 ];
 
 // Memoize the navigation links to prevent re-rendering
