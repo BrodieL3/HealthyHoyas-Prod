@@ -10,7 +10,6 @@ import { useSidebar } from "@/components/ui/sidebar-minimal";
 import { cn } from "@/lib/utils";
 import { memo } from "react";
 import { LogOut } from "lucide-react";
-import { signOut } from "@/app/auth/login/actions";
 import { useAuth } from "@/providers/auth-provider";
 import { useRouter } from "next/navigation";
 
@@ -147,8 +146,9 @@ export function UserProfile() {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      router.push("/auth/login");
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = "/auth/login";
     } catch (error) {
       console.error("Error signing out:", error);
     }

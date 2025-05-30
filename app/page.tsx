@@ -11,9 +11,12 @@ export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+
+  console.log("User in app/page.tsx:", user);
+  
   if (user) {
     // Authenticated → show dashboard
-    return <Dashboard fallbackSkeletons={ServerSkeletons()} />;
+    return <Dashboard user={user} fallbackSkeletons={ServerSkeletons()} />;
   }
 
   // Unauthenticated → show landing page

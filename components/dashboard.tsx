@@ -13,6 +13,7 @@ import {
   type UserProfile,
 } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 
 import { NutritionRadialCharts } from "@/components/nutrition-radial-chart";
 import { CalorieRadialChart } from "@/components/calorie-radial-chart";
@@ -27,6 +28,7 @@ const DEFAULT_CARBS_PCT = 50;
 const DEFAULT_FAT_PCT = 25;
 
 interface DashboardProps {
+  user: User;
   fallbackSkeletons?: {
     cardSkeleton: React.ReactNode;
     listSkeleton: React.ReactNode;
@@ -34,7 +36,7 @@ interface DashboardProps {
   };
 }
 
-export function Dashboard({ fallbackSkeletons }: DashboardProps) {
+export function Dashboard({ user, fallbackSkeletons }: DashboardProps) {
   const router = useRouter();
   const [meals, setMeals] = useState<MealWithFoodItems[]>([]);
   const [nutritionSummary, setNutritionSummary] =
@@ -42,6 +44,15 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Log the user prop on mount
+  useEffect(() => {
+    console.log("[Dashboard] user prop:", user);
+    const supabase = createClient();
+    supabase.auth.getSession().then((result: any) => {
+      console.log("[Dashboard] Client session:", result);
+    });
+  }, [user]);
 
   // Fetch all dashboard data
   useEffect(() => {
@@ -51,17 +62,15 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
   // Ensure profile exists after login
   useEffect(() => {
     async function ensureProfile() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
       if (!user) return;
+      const supabase = createClient();
       // Check if profile exists
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .single();
+      console.log("[Dashboard] ensureProfile profile:", profile, "error:", profileError);
       if (profileError && profileError.code === "PGRST116") {
         // Profile doesn't exist, create it with defaults
         const { error: insertError } = await supabase
@@ -77,7 +86,7 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
             },
           });
         if (insertError) {
-          console.error("Error creating user profile (client):", insertError);
+          console.error("[Dashboard] Error creating user profile (client):", insertError);
         } else {
           // Optionally, refetch dashboard data
           fetchDashboardData();
@@ -85,14 +94,13 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
       }
     }
     ensureProfile();
-  }, []);
+  }, [user]);
 
   // Redirect to profile setup if profile is missing or incomplete
   useEffect(() => {
     async function checkProfile() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const supabase = createClient();
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
@@ -102,11 +110,12 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
       if (!profile || !profile.full_name || !profile.age || !profile.height || !profile.weight ||
         !profile.sex || !profile.activity_level || !profile.calorie_goal) 
         {
-        router.push("/profile-setup");
+        console.log("[Dashboard] Would redirect to /profile-setup due to incomplete profile", profile);
+        // router.push("/profile-setup");
       }
     }
     checkProfile();
-  }, [router]);
+  }, [router, user]);
 
   // Function to fetch dashboard data
   async function fetchDashboardData() {
@@ -114,15 +123,12 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
       setLoading(true);
       setError(null);
 
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
       if (!user) {
         setError("Please sign in to view your dashboard");
         return;
       }
+
+      console.log("[Dashboard] fetchDashboardData for user:", user);
 
       const today = format(new Date(), "yyyy-MM-dd");
       const [mealsData, summaryData, profileData] = await Promise.all([
@@ -135,7 +141,7 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
       setNutritionSummary(summaryData);
       setUserProfile(profileData);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("[Dashboard] Error fetching dashboard data:", error);
       setError("Failed to load dashboard data. Please try again later.");
     } finally {
       setLoading(false);
@@ -273,3 +279,4 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
     </div>
   );
 }
+

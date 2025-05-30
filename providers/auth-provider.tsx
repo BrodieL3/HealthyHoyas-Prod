@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
+import type { User, Session, AuthError } from "@supabase/supabase-js";
 
 type AuthContextType = {
   user: User | null;
@@ -12,41 +12,34 @@ type AuthContextType = {
   refreshSession: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  error: null,
-  refreshSession: async () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Minimum time between auth state changes (5 seconds)
-const MIN_REFRESH_INTERVAL = 5000;
-// Maximum number of refreshes per minute
-const MAX_REFRESHES_PER_MINUTE = 10;
+// Constants for rate limiting
+const MAX_REFRESHES_PER_HOUR = 1800; // Supabase's limit
+const MIN_REFRESH_INTERVAL = 2000; // 2 seconds minimum between refreshes
+const SESSION_CHECK_INTERVAL = 300000; // 5 minutes
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const router = useRouter();
-  const lastRefreshTime = useRef<number>(0);
-  const refreshTimeout = useRef<NodeJS.Timeout | null>(null);
-  const refreshCount = useRef<number>(0);
-  const refreshCountResetTimeout = useRef<NodeJS.Timeout | null>(null);
   const mounted = useRef(true);
+  const lastRefreshTime = useRef(Date.now());
+  const refreshCount = useRef(0);
+  const refreshTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
+  const refreshCountResetTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
+  const sessionCheckInterval = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const resetRefreshCount = useCallback(() => {
     refreshCount.current = 0;
-    if (refreshCountResetTimeout.current) {
-      clearTimeout(refreshCountResetTimeout.current);
-    }
   }, []);
 
   const refreshSession = useCallback(async () => {
     const now = Date.now();
     
     // Check if we've exceeded the rate limit
-    if (refreshCount.current >= MAX_REFRESHES_PER_MINUTE) {
+    if (refreshCount.current >= MAX_REFRESHES_PER_HOUR) {
       console.warn('Rate limit reached, skipping refresh');
       return;
     }
@@ -71,11 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastRefreshTime.current = now;
         refreshCount.current++;
 
-        // Reset refresh count after a minute
+        // Reset refresh count after an hour
         if (refreshCountResetTimeout.current) {
           clearTimeout(refreshCountResetTimeout.current);
         }
-        refreshCountResetTimeout.current = setTimeout(resetRefreshCount, 60000);
+        refreshCountResetTimeout.current = setTimeout(resetRefreshCount, 3600000);
       }
     } catch (err) {
       console.error("Error refreshing session:", err);
@@ -87,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mounted.current = true;
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }: { data: { session: Session | null }, error: AuthError | null }) => {
       if (!mounted.current) return;
       
       if (error) {
@@ -103,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes with improved debouncing
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
       if (!mounted.current) return;
 
       // Clear any existing timeout
@@ -120,19 +113,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session?.user ?? null);
           setLoading(false);
           // Only refresh router if we're not rate limited
-          if (refreshCount.current < MAX_REFRESHES_PER_MINUTE) {
+          if (refreshCount.current < MAX_REFRESHES_PER_HOUR) {
             router.refresh();
           }
         }
       }, MIN_REFRESH_INTERVAL);
     });
 
-    // Set up periodic session check
-    const sessionCheckInterval = setInterval(() => {
+    // Set up periodic session check with a longer interval
+    sessionCheckInterval.current = setInterval(() => {
       if (mounted.current) {
         refreshSession();
       }
-    }, 60000); // Check every minute
+    }, SESSION_CHECK_INTERVAL);
 
     return () => {
       mounted.current = false;
@@ -142,8 +135,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (refreshCountResetTimeout.current) {
         clearTimeout(refreshCountResetTimeout.current);
       }
-      if (sessionCheckInterval) {
-        clearInterval(sessionCheckInterval);
+      if (sessionCheckInterval.current) {
+        clearInterval(sessionCheckInterval.current);
       }
       subscription.unsubscribe();
     };
@@ -156,10 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}; 
+} 

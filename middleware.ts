@@ -13,6 +13,10 @@ const PUBLIC_ROUTES = [
   "/auth/sign-up",
 ];
 
+// Cache for storing user sessions
+const sessionCache = new Map<string, { user: any; timestamp: number }>();
+const CACHE_DURATION = 300000; // 5 minutes
+
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createServerClient(
@@ -33,11 +37,29 @@ export async function middleware(req: NextRequest) {
   );
 
   let user = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-  } catch (e) {
-    // ignore, treat as not signed in
+  const sessionCookie = req.cookies.get('sb-auth-token')?.value;
+  
+  if (sessionCookie) {
+    // Check cache first
+    const cachedSession = sessionCache.get(sessionCookie);
+    const now = Date.now();
+    
+    if (cachedSession && now - cachedSession.timestamp < CACHE_DURATION) {
+      user = cachedSession.user;
+    } else {
+      try {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+        
+        // Update cache
+        if (user) {
+          sessionCache.set(sessionCookie, { user, timestamp: now });
+        }
+      } catch (e) {
+        // ignore, treat as not signed in
+        sessionCache.delete(sessionCookie);
+      }
+    }
   }
 
   const { pathname } = req.nextUrl;
