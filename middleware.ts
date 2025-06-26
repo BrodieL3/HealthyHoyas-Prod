@@ -9,7 +9,7 @@ const PUBLIC_ROUTES = [
   "/features-page",
   "/how-it-works-page",
   "/about-page",
-  "/auth/sign-in",
+  "/auth/login",
   "/auth/sign-up",
 ];
 
@@ -66,7 +66,7 @@ export async function middleware(req: NextRequest) {
   const isPublic = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
   if (!isPublic && !user) {
-    const signInUrl = new URL("/auth/sign-in", req.url);
+    const signInUrl = new URL("/auth/login", req.url);
     signInUrl.searchParams.set("redirectedFrom", pathname);
     return NextResponse.redirect(signInUrl);
   }

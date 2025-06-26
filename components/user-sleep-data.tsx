@@ -9,42 +9,20 @@ import { Progress } from "@/components/ui/progress";
 import { TrendingUp, BarChart3, Target, Moon } from "lucide-react";
 import { format } from "date-fns";
 
-export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
-  const [user, setUser] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+export function UserSleepData({ userId, refreshTrigger }: { userId: string; refreshTrigger: number }) {
   const [recentEntries, setRecentEntries] = useState<SleepEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check authentication
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        setUser(null);
-      } finally {
-        setAuthLoading(false);
-      }
-    }
-
-    checkAuth();
-  }, []);
-
   useEffect(() => {
     async function fetchData() {
-      if (!user?.id) {
+      if (!userId) {
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        const entries = await getUserSleepEntries(user.id);
+        const entries = await getUserSleepEntries(userId);
         setRecentEntries(entries?.slice(0, 7) || []);
       } catch (error) {
         console.error("Error fetching sleep data:", error);
@@ -55,9 +33,9 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
     }
 
     fetchData();
-  }, [user?.id, refreshTrigger]);
+  }, [userId, refreshTrigger]);
 
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
@@ -69,7 +47,7 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
     );
   }
 
-  if (!user) {
+  if (!userId) {
     return (
       <div className="space-y-6">
         <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
@@ -77,24 +55,6 @@ export function UserSleepData({ refreshTrigger }: { refreshTrigger: number }) {
             <p className="text-muted-foreground">
               Please sign in to view sleep data
             </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
-          <CardHeader>
-            <div className="h-5 w-32 bg-muted rounded animate-pulse" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="h-4 w-full bg-muted rounded animate-pulse" />
-              <div className="h-2 w-full bg-muted rounded animate-pulse" />
-            </div>
           </CardContent>
         </Card>
       </div>

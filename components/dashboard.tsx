@@ -28,7 +28,7 @@ const DEFAULT_CARBS_PCT = 50;
 const DEFAULT_FAT_PCT = 25;
 
 interface DashboardProps {
-  user: User;
+  userId: string;
   fallbackSkeletons?: {
     cardSkeleton: React.ReactNode;
     listSkeleton: React.ReactNode;
@@ -36,7 +36,7 @@ interface DashboardProps {
   };
 }
 
-export function Dashboard({ user, fallbackSkeletons }: DashboardProps) {
+export function Dashboard({ userId, fallbackSkeletons }: DashboardProps) {
   const router = useRouter();
   const [meals, setMeals] = useState<MealWithFoodItems[]>([]);
   const [nutritionSummary, setNutritionSummary] =
@@ -45,112 +45,82 @@ export function Dashboard({ user, fallbackSkeletons }: DashboardProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Log the user prop on mount
+  // Combined profile check and data fetching
   useEffect(() => {
-    console.log("[Dashboard] user prop:", user);
-    const supabase = createClient();
-    supabase.auth.getSession().then((result: any) => {
-      console.log("[Dashboard] Client session:", result);
-    });
-  }, [user]);
-
-  // Fetch all dashboard data
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  // Ensure profile exists after login
-  useEffect(() => {
-    async function ensureProfile() {
-      if (!user) return;
-      const supabase = createClient();
-      // Check if profile exists
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      console.log("[Dashboard] ensureProfile profile:", profile, "error:", profileError);
-      if (profileError && profileError.code === "PGRST116") {
-        // Profile doesn't exist, create it with defaults
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .insert({
-            user_id: user.id,
-            email: user.email,
-            full_name: user.email?.split("@")[0] || "User",
-            macro_settings: {
-              protein_pct: 25,
-              carbs_pct: 50,
-              fat_pct: 25,
-            },
-          });
-        if (insertError) {
-          console.error("[Dashboard] Error creating user profile (client):", insertError);
-        } else {
-          // Optionally, refetch dashboard data
-          fetchDashboardData();
+    async function initializeDashboard() {
+      if (!userId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get user profile using the shared function
+        console.log("[Dashboard] Fetching user profile");
+        const profile = await getUserProfile(userId);
+        
+        if (!profile) {
+          console.error("[Dashboard] Failed to get or create user profile");
+          setError("Failed to load user profile");
+          return;
         }
+        
+        console.log("[Dashboard] Successfully fetched profile:", profile);
+        setUserProfile(profile);
+        
+        // Check if profile is incomplete
+        if (!profile.full_name || !profile.age || !profile.height || !profile.weight ||
+            !profile.sex || !profile.activity_level || !profile.calorie_goal) {
+          console.log("[Dashboard] Incomplete profile detected:", profile);
+          // Uncomment when ready to implement profile setup
+          // router.push("/profile-setup");
+        }
+
+        // Fetch dashboard data
+        console.log("[Dashboard] Fetching dashboard data for user:", userId);
+        const today = format(new Date(), "yyyy-MM-dd");
+        const [mealsData, summaryData] = await Promise.all([
+          getUserMeals(userId, 5),
+          getDailyNutritionSummary(userId, today),
+        ]);
+
+        console.log("[Dashboard] Successfully fetched dashboard data:", {
+          meals: mealsData,
+          summary: summaryData
+        });
+
+        setMeals(mealsData);
+        setNutritionSummary(summaryData);
+      } catch (error: any) {
+        console.error("[Dashboard] Error initializing dashboard:", {
+          error,
+          errorString: JSON.stringify(error),
+          errorKeys: Object.keys(error),
+          errorValues: Object.values(error)
+        });
+        setError("Failed to load dashboard data. Please try again later.");
+      } finally {
+        setLoading(false);
       }
     }
-    ensureProfile();
-  }, [user]);
 
-  // Redirect to profile setup if profile is missing or incomplete
-  useEffect(() => {
-    async function checkProfile() {
-      if (!user) return;
-      const supabase = createClient();
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      // You can add more checks for completeness if you want
-      if (!profile || !profile.full_name || !profile.age || !profile.height || !profile.weight ||
-        !profile.sex || !profile.activity_level || !profile.calorie_goal) 
-        {
-        console.log("[Dashboard] Would redirect to /profile-setup due to incomplete profile", profile);
-        // router.push("/profile-setup");
-      }
-    }
-    checkProfile();
-  }, [router, user]);
-
-  // Function to fetch dashboard data
-  async function fetchDashboardData() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      if (!user) {
-        setError("Please sign in to view your dashboard");
-        return;
-      }
-
-      console.log("[Dashboard] fetchDashboardData for user:", user);
-
-      const today = format(new Date(), "yyyy-MM-dd");
-      const [mealsData, summaryData, profileData] = await Promise.all([
-        getUserMeals(user.id, 5),
-        getDailyNutritionSummary(user.id, today),
-        getUserProfile(user.id),
-      ]);
-
-      setMeals(mealsData);
-      setNutritionSummary(summaryData);
-      setUserProfile(profileData);
-    } catch (error) {
-      console.error("[Dashboard] Error fetching dashboard data:", error);
-      setError("Failed to load dashboard data. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  }
+    initializeDashboard();
+  }, [userId, router]);
 
   // Handle meal updates
   const handleMealUpdated = () => {
-    fetchDashboardData();
+    if (!userId) return;
+    
+    const today = format(new Date(), "yyyy-MM-dd");
+    Promise.all([
+      getUserMeals(userId, 5),
+      getDailyNutritionSummary(userId, today),
+    ]).then(([mealsData, summaryData]) => {
+      setMeals(mealsData);
+      setNutritionSummary(summaryData);
+    }).catch(error => {
+      console.error("[Dashboard] Error updating meal data:", error);
+      setError("Failed to update meal data");
+    });
   };
 
   // Calculate macronutrient goals based on TDEE
@@ -272,6 +242,7 @@ export function Dashboard({ user, fallbackSkeletons }: DashboardProps) {
               loading={loading}
               className="h-full overflow-auto"
               onMealUpdated={handleMealUpdated}
+              userId={userId}
             />
           </div>
         </div>

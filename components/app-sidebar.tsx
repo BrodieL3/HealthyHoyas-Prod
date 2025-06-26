@@ -26,17 +26,18 @@ import {
 import { UserProfile } from "@/components/user-profile";
 import { Button } from "@/components/ui/button";
 import { memo, useState, useEffect } from "react";
+import { createClient } from "@/utils/supabase/client";
 
 const routes = [
-  { href: "/", label: "Dashboard", icon: Home },
-  { href: "/food-log", label: "Food Log", icon: UtensilsCrossed },
-  { href: "/steps", label: "Track Steps", icon: Footprints },
-  { href: "/sleep", label: "Track Sleep", icon: Moon },
-  { href: "/weight", label: "Track Weight", icon: Weight },
-  { href: "/analytics", label: "Analytics", icon: BarChart },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/alcohol-awareness", label: "Alcohol Awareness", icon: Beer },
-  { href: "/drug-awareness", label: "Drug Awareness", icon: Pill },
+  { href: "/protected/dashboard", label: "Dashboard", icon: Home },
+  { href: "/protected/food-log", label: "Food Log", icon: UtensilsCrossed },
+  { href: "/protected/steps", label: "Track Steps", icon: Footprints },
+  { href: "/protected/sleep", label: "Track Sleep", icon: Moon },
+  { href: "/protected/weight", label: "Track Weight", icon: Weight },
+  { href: "/protected/analytics", label: "Analytics", icon: BarChart },
+  { href: "/protected/settings", label: "Settings", icon: Settings },
+  { href: "/protected/alcohol-awareness", label: "Alcohol Awareness", icon: Beer },
+  { href: "/protected/drug-awareness", label: "Drug Awareness", icon: Pill },
 ];
 
 // Memoize the navigation links to prevent re-rendering

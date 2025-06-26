@@ -92,10 +92,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return pathname === "/features-page";
   }
 
-  // Show sidebar if:
-  // - Authenticated and on root (dashboard)
-  // - Or on any other protected route
-  const showSidebar = (user && isLandingPage(pathname)) || (!isAuthPage(pathname) && !isLandingPage(pathname) && !isAboutPage(pathname) && !isHowItWorksPage(pathname) && !isFeaturesPage(pathname));
+  // Show sidebar only for protected routes
+  const showSidebar = pathname?.startsWith("/protected");
 
   // Show AuthLayout (no sidebar) if:
   // - On auth page

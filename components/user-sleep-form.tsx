@@ -17,39 +17,13 @@ import { Slider } from "@/components/ui/slider";
 import { Moon, CheckCircle2, AlertCircle } from "lucide-react";
 import { dataEntryToasts, errorToasts, loadingToasts } from "@/lib/toast-utils";
 
-export function UserSleepForm({
-  onSleepLogged,
-}: {
-  onSleepLogged: () => void;
-}) {
-  const [user, setUser] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+export function UserSleepForm({ userId, onSleepLogged }: { userId: string; onSleepLogged: () => void }) {
   const [submitted, setSubmitted] = useState(false);
   const [sleep, setSleep] = useState("");
   const [sleepQuality, setSleepQuality] = useState([7]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState(false);
-
-  // Check authentication
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        setUser(null);
-      } finally {
-        setAuthLoading(false);
-      }
-    }
-
-    checkAuth();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +34,7 @@ export function UserSleepForm({
       return;
     }
 
-    if (!user?.id) {
+    if (!userId) {
       errorToasts.auth();
       return;
     }
@@ -86,7 +60,7 @@ export function UserSleepForm({
       const today = new Date().toISOString().split("T")[0];
 
       const result = await saveSleepEntry({
-        userId: user.id,
+        userId,
         sleep: sleepValue,
         sleep_quality: qualityValue,
         date: today,
@@ -114,26 +88,6 @@ export function UserSleepForm({
       setIsLoading(false);
     }
   };
-
-  if (authLoading) {
-    return (
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
-        <CardContent className="flex justify-center items-center py-12">
-          <p className="text-muted-foreground">Loading...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
-        <CardContent className="flex justify-center items-center py-12">
-          <p className="text-muted-foreground">Please sign in to log sleep</p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="shadow-lg bg-white/80 backdrop-blur-sm border-0 hover-lift">
@@ -219,7 +173,7 @@ export function UserSleepForm({
             <Button
               type="submit"
               className="w-full h-12 text-lg"
-              disabled={isLoading || !user?.id}
+              disabled={isLoading || !userId}
               size="lg"
               loading={isLoading}
             >

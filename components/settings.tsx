@@ -81,7 +81,7 @@ function calculateTDEE({
   return Math.round(bmr * multiplier);
 }
 
-export function Settings() {
+export function Settings({ userId }: { userId: string }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<Partial<UserProfile>>({});
@@ -119,16 +119,12 @@ export function Settings() {
       setLoading(true);
       setError(null);
       try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
+        if (!userId) {
           setError("Please sign in to view your settings.");
           setLoading(false);
           return;
         }
-        const prof = await getUserProfile(user.id);
+        const prof = await getUserProfile(userId);
         setProfile(prof);
         setForm(prof || {});
         setAvatarUrl(prof?.avatar_url);
@@ -146,7 +142,7 @@ export function Settings() {
       }
     }
     fetchProfile();
-  }, []);
+  }, [userId]);
 
   // Adding a visual indicator for debugging
   useEffect(() => {
@@ -379,12 +375,7 @@ export function Settings() {
     setSuccess(null);
 
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
+      if (!userId) {
         setError("Not signed in.");
         setLoading(false);
         return;
@@ -396,7 +387,7 @@ export function Settings() {
         fat_pct: macroForm.fat_pct,
       };
 
-      const updated = await updateUserProfile(user.id, updates);
+      const updated = await updateUserProfile(userId, updates);
 
       if (!updated) {
         setError(
@@ -444,16 +435,12 @@ export function Settings() {
     setError(null);
     setLoading(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      if (!userId) {
         setError("Not signed in.");
         setLoading(false);
         return;
       }
-      const updated = await updateUserProfile(user.id, { ...form, tdee });
+      const updated = await updateUserProfile(userId, { ...form, tdee });
       setProfile(updated);
       setForm(updated || {});
       setSuccess("TDEE calculated and saved!");
@@ -479,11 +466,7 @@ export function Settings() {
     setError(null);
     setSuccess(null);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      if (!userId) {
         setError("Not signed in.");
         setLoading(false);
         return;
@@ -497,7 +480,7 @@ export function Settings() {
       }
 
       const updates: any = { [field]: fieldValue };
-      const updated = await updateUserProfile(user.id, updates);
+      const updated = await updateUserProfile(userId, updates);
 
       if (!updated) {
         setError("Failed to update profile. Please try again.");
