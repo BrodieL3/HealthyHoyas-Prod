@@ -2,7 +2,10 @@ import { createClient } from "./client";
 import type { UserProfile } from "./types";
 
 // Cache for storing profile data and last fetch time
-const profileCache = new Map<string, { profile: UserProfile | null; timestamp: number }>();
+const profileCache = new Map<
+  string,
+  { profile: UserProfile | null; timestamp: number }
+>();
 const CACHE_DURATION = 60000; // 1 minute cache
 const MIN_FETCH_INTERVAL = 10000; // 10 seconds minimum between fetches
 const MAX_RETRIES = 2;
@@ -52,7 +55,7 @@ async function withRetry<T>(
     return await operation();
   } catch (error) {
     if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
       return withRetry(operation, retries - 1);
     }
     throw error;
@@ -74,15 +77,18 @@ export async function getUserProfile(
 
     // Check if we're fetching too frequently
     if (cachedData && now - cachedData.timestamp < MIN_FETCH_INTERVAL) {
-      console.warn('Fetching profile too frequently, returning cached data');
+      console.warn("Fetching profile too frequently, returning cached data");
       return cachedData.profile;
     }
 
     const supabase = createClient();
-    
+
     // Wrap the database operations in retry logic
     const result = await withRetry(async () => {
-      console.log("[getUserProfile] Attempting to fetch profile for user:", userId);
+      console.log(
+        "[getUserProfile] Attempting to fetch profile for user:",
+        userId
+      );
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -94,42 +100,51 @@ export async function getUserProfile(
           error,
           errorString: JSON.stringify(error),
           errorKeys: Object.keys(error),
-          errorValues: Object.values(error)
+          errorValues: Object.values(error),
         });
-        
+
         // If profile doesn't exist, create one using upsert
         if (error.code === "PGRST116") {
-          console.log("[getUserProfile] Profile not found, attempting to create new profile");
-          const { data: userData, error: userError } = await supabase.auth.getUser();
-          
+          console.log(
+            "[getUserProfile] Profile not found, attempting to create new profile"
+          );
+          const { data: userData, error: userError } =
+            await supabase.auth.getUser();
+
           if (userError) {
             console.error("[getUserProfile] Error getting user data:", {
               error: userError,
               errorString: JSON.stringify(userError),
               errorKeys: Object.keys(userError),
-              errorValues: Object.values(userError)
+              errorValues: Object.values(userError),
             });
             return null;
           }
 
           if (userData.user) {
             try {
-              console.log("[getUserProfile] Creating new profile for user:", userData.user.email);
+              console.log(
+                "[getUserProfile] Creating new profile for user:",
+                userData.user.email
+              );
               const { data: newProfile, error: upsertError } = await supabase
                 .from("profiles")
-                .upsert({
-                  user_id: userId,
-                  email: userData.user.email,
-                  full_name: userData.user.email?.split("@")[0] || "User",
-                  macro_settings: {
-                    protein_pct: 25,
-                    carbs_pct: 50,
-                    fat_pct: 25,
+                .upsert(
+                  {
+                    user_id: userId,
+                    email: userData.user.email,
+                    full_name: userData.user.email?.split("@")[0] || "User",
+                    macro_settings: {
+                      protein_pct: 25,
+                      carbs_pct: 50,
+                      fat_pct: 25,
+                    },
                   },
-                }, {
-                  onConflict: 'user_id',
-                  ignoreDuplicates: true
-                })
+                  {
+                    onConflict: "user_id",
+                    ignoreDuplicates: true,
+                  }
+                )
                 .select()
                 .single();
 
@@ -138,22 +153,27 @@ export async function getUserProfile(
                   error: upsertError,
                   errorString: JSON.stringify(upsertError),
                   errorKeys: Object.keys(upsertError),
-                  errorValues: Object.values(upsertError)
+                  errorValues: Object.values(upsertError),
                 });
                 if (upsertError.code === "42501") {
-                  console.error("[getUserProfile] Permission denied: Please check RLS policies for the profiles table");
+                  console.error(
+                    "[getUserProfile] Permission denied: Please check RLS policies for the profiles table"
+                  );
                 }
                 return null;
               }
               console.log("[getUserProfile] Successfully created new profile");
               return newProfile;
             } catch (upsertError) {
-              console.error("[getUserProfile] Unexpected error creating profile:", {
-                error: upsertError,
-                errorString: JSON.stringify(upsertError),
-                errorKeys: Object.keys(upsertError),
-                errorValues: Object.values(upsertError)
-              });
+              console.error(
+                "[getUserProfile] Unexpected error creating profile:",
+                {
+                  error: upsertError,
+                  errorString: JSON.stringify(upsertError),
+                  errorKeys: Object.keys(upsertError as object),
+                  errorValues: Object.values(upsertError as object),
+                }
+              );
               return null;
             }
           }
@@ -165,7 +185,9 @@ export async function getUserProfile(
     });
 
     if (!result) {
-      console.error("[getUserProfile] No result returned from profile fetch/creation");
+      console.error(
+        "[getUserProfile] No result returned from profile fetch/creation"
+      );
       return null;
     }
 
@@ -176,8 +198,8 @@ export async function getUserProfile(
     console.error("[getUserProfile] Unexpected error in getUserProfile:", {
       error,
       errorString: JSON.stringify(error),
-      errorKeys: Object.keys(error),
-      errorValues: Object.values(error)
+      errorKeys: Object.keys(error as object),
+      errorValues: Object.values(error as object),
     });
     return null;
   }

@@ -271,6 +271,7 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
           <div className="space-y-4 lg:col-span-1 hidden lg:block">
             {/* Recent meals */}
             <RecentMeals
+              userId={userProfile?.user_id || ""}
               meals={meals}
               loading={loading}
               className="h-full overflow-auto"
