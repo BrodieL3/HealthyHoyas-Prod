@@ -27,7 +27,7 @@ export function FoodSearch({
   mealPeriod,
   onFoodSelect,
   placeholder = "Search menu items...",
-  className = "h-12 text-lg",
+  className = "h-12 text-sm",
 }: FoodSearchProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ExtendedFoodItem[]>([]);

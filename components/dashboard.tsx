@@ -13,10 +13,12 @@ import {
   type UserProfile,
 } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { NutritionRadialCharts } from "@/components/nutrition-radial-chart";
 import { CalorieRadialChart } from "@/components/calorie-radial-chart";
 import { RecentMeals } from "@/components/recent-meals";
+import { MicronutrientTracker } from "@/components/micronutrient-tracker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeaderDate } from "@/components/page-header-date";
@@ -64,18 +66,16 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
         .single();
       if (profileError && profileError.code === "PGRST116") {
         // Profile doesn't exist, create it with defaults
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .insert({
-            user_id: user.id,
-            email: user.email,
-            full_name: user.email?.split("@")[0] || "User",
-            macro_settings: {
-              protein_pct: 25,
-              carbs_pct: 50,
-              fat_pct: 25,
-            },
-          });
+        const { error: insertError } = await supabase.from("profiles").insert({
+          user_id: user.id,
+          email: user.email,
+          full_name: user.email?.split("@")[0] || "User",
+          macro_settings: {
+            protein_pct: 25,
+            carbs_pct: 50,
+            fat_pct: 25,
+          },
+        });
         if (insertError) {
           console.error("Error creating user profile (client):", insertError);
         } else {
@@ -91,7 +91,9 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
   useEffect(() => {
     async function checkProfile() {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       const { data: profile } = await supabase
         .from("profiles")
@@ -99,9 +101,16 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
         .eq("user_id", user.id)
         .single();
       // You can add more checks for completeness if you want
-      if (!profile || !profile.full_name || !profile.age || !profile.height || !profile.weight ||
-        !profile.sex || !profile.activity_level || !profile.calorie_goal) 
-        {
+      if (
+        !profile ||
+        !profile.full_name ||
+        !profile.age ||
+        !profile.height ||
+        !profile.weight ||
+        !profile.sex ||
+        !profile.activity_level ||
+        !profile.calorie_goal
+      ) {
         router.push("/profile-setup");
       }
     }
@@ -222,8 +231,8 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
       {/* Header */}
-      <div className="bg-transparent backdrop-blur-md pl-20 pr-6 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto">
+      <div className="bg-transparent backdrop-blur-md pr-6 py-4 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -239,7 +248,7 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto pl-20 pr-6 py-6">
+      <div className="max-w-7xl mx-auto px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Left column - Macros and calories (2/3 width) */}
           <div className="space-y-4 lg:col-span-2">
@@ -258,8 +267,8 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
             />
           </div>
 
-          {/* Right column (1/3 width) */}
-          <div className="space-y-4 lg:col-span-1">
+          {/* Right column (1/3 width) - Hidden on mobile */}
+          <div className="space-y-4 lg:col-span-1 hidden lg:block">
             {/* Recent meals */}
             <RecentMeals
               meals={meals}
@@ -269,6 +278,27 @@ export function Dashboard({ fallbackSkeletons }: DashboardProps) {
             />
           </div>
         </div>
+
+        {/* Micronutrient tracker - Full width below main content */}
+        <div className="mt-6">
+          <MicronutrientTracker
+            loading={loading}
+            nutritionSummary={nutritionSummary}
+            className="w-full"
+          />
+        </div>
+      </div>
+
+      {/* Floating Action Button - Only visible on mobile */}
+      <div className="lg:hidden fixed bottom-6 right-6 z-50">
+        <Link href="/food-log">
+          <Button
+            size="lg"
+            className="w-14 h-14 rounded-full bg-black hover:bg-gray-800 shadow-lg flex items-center justify-center p-0"
+          >
+            <PlusCircle className="h-6 w-6 text-white" />
+          </Button>
+        </Link>
       </div>
     </div>
   );

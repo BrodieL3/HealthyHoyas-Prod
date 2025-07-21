@@ -154,7 +154,7 @@ export function RecentMeals({
         </CardHeader>
         <CardContent>
           {/* Log New Meal Button */}
-          <Link href="/log-food" className="w-full mb-4 block">
+          <Link href="/food-log" className="w-full mb-4 block">
             <Button className="w-full">
               <Plus className="h-4 w-4 mr-2" />
               Log New Meal

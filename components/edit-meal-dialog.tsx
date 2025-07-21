@@ -319,7 +319,7 @@ export function EditMealDialog({
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Search food items..."
                   autoComplete="off"
-                  className="pr-8"
+                  className="pr-8 text-sm"
                 />
                 {isSearching && (
                   <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-3 text-muted-foreground z-40" />

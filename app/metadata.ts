@@ -1,6 +1,9 @@
-import type { Metadata } from 'next'
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'HealthyHoyas',
-  description: 'Your health and fitness tracking app',
-} 
+  title: "HealthyHoyas",
+  description: "Your health and fitness tracking app",
+  icons: {
+    icon: "/favicon.ico",
+  },
+};

@@ -13,6 +13,9 @@ import {
   User,
   ChevronRight,
   ChevronLeft,
+  Utensils,
+  Pill,
+  Wine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -32,6 +35,8 @@ const routes = [
   { href: "/sleep", label: "Track Sleep", icon: Moon },
   { href: "/weight", label: "Track Weight", icon: Weight },
   { href: "/analytics", label: "Analytics", icon: BarChart },
+  { href: "/alcohol-awareness", label: "Alcohol Awareness", icon: Wine },
+  { href: "/drug-awareness", label: "Drug Awareness", icon: Pill },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -103,7 +108,7 @@ const SidebarHeader = memo(function SidebarHeader() {
       )}
     >
       <div className="flex items-center gap-2 font-semibold">
-        <User className="h-5 w-5" />
+        <Utensils className="h-5 w-5" />
         {expanded && showText && <span>Healthy Hoyas</span>}
       </div>
     </div>
