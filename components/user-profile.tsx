@@ -10,8 +10,6 @@ import { useSidebar } from "@/components/ui/sidebar-minimal";
 import { cn } from "@/lib/utils";
 import { memo } from "react";
 import { LogOut } from "lucide-react";
-import { signOut } from "@/app/auth/login/actions";
-import { useAuth } from "@/providers/auth-provider";
 import { useRouter } from "next/navigation";
 
 // Inner component that uses the sidebar context
@@ -81,7 +79,8 @@ const UserProfileContent = memo(function UserProfileContent({
 });
 
 export function UserProfile() {
-  const { user: authUser, loading: authLoading, refreshSession } = useAuth();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,12 +88,28 @@ export function UserProfile() {
   const maxRetries = 3;
   const router = useRouter();
 
+  // Get user auth data
+  useEffect(() => {
+    async function getAuthUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        setUserEmail(user.email || null);
+      } else {
+        setLoading(false);
+      }
+    }
+    getAuthUser();
+  }, []);
+
+  // Get user profile when we have userId
   useEffect(() => {
     let mounted = true;
     let retryTimeout: NodeJS.Timeout;
 
     async function loadProfile() {
-      if (!authUser) {
+      if (!userId) {
         if (mounted) {
           setLoading(false);
           setProfile(null);
@@ -106,7 +121,7 @@ export function UserProfile() {
         setLoading(true);
         setError(null);
 
-        const userProfile = await getUserProfile(authUser.id);
+        const userProfile = await getUserProfile(userId);
         if (mounted) {
           if (userProfile) {
             setProfile(userProfile);
@@ -116,7 +131,7 @@ export function UserProfile() {
             // Retry loading profile if it fails
             if (retryCountRef.current < maxRetries) {
               retryCountRef.current++;
-              retryTimeout = setTimeout(loadProfile, 2000 * retryCountRef.current); // Increased backoff time
+              retryTimeout = setTimeout(loadProfile, 2000 * retryCountRef.current);
             }
           }
         }
@@ -127,7 +142,7 @@ export function UserProfile() {
           // Retry loading profile if it fails
           if (retryCountRef.current < maxRetries) {
             retryCountRef.current++;
-            retryTimeout = setTimeout(loadProfile, 2000 * retryCountRef.current); // Increased backoff time
+            retryTimeout = setTimeout(loadProfile, 2000 * retryCountRef.current);
           }
         }
       } finally {
@@ -143,12 +158,13 @@ export function UserProfile() {
         clearTimeout(retryTimeout);
       }
     };
-  }, [authUser]);
+  }, [userId]);
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      router.push("/auth/login");
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = "/auth/login";
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -162,7 +178,7 @@ export function UserProfile() {
     );
   }
 
-  if (error || !authUser) {
+  if (error || !userId) {
     return (
       <div className="flex items-center justify-center p-4">
         <p className="text-sm text-muted-foreground">Please sign in</p>
@@ -173,8 +189,8 @@ export function UserProfile() {
   return (
     <UserProfileContent
       user={{
-        email: authUser.email || "",
-        name: authUser.user_metadata?.name || authUser.email?.split("@")[0] || "User",
+        email: userEmail || "",
+        name: userEmail?.split("@")[0] || "User",
       }}
       profile={profile}
       onSignOut={handleSignOut}

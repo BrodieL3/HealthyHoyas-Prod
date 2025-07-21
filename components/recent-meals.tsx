@@ -32,6 +32,7 @@ interface RecentMealsProps {
   loading?: boolean;
   className?: string;
   onMealUpdated?: () => void;
+  userId: string;
 }
 
 export function RecentMeals({
@@ -39,6 +40,7 @@ export function RecentMeals({
   loading = false,
   className,
   onMealUpdated = () => {},
+  userId,
 }: RecentMealsProps) {
   const [selectedMeal, setSelectedMeal] = useState<MealWithFoodItems | null>(
     null
@@ -69,14 +71,8 @@ export function RecentMeals({
   const fetchAllMeals = async () => {
     try {
       setAllMealsLoading(true);
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const allUserMeals = await getUserMeals(user.id, 50); // Get more meals
+      if (!userId) return;
+      const allUserMeals = await getUserMeals(userId, 50); // Get more meals
       setAllMeals(allUserMeals);
     } catch (error) {
       console.error("Error fetching all meals:", error);

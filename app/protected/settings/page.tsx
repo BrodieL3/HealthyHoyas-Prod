@@ -7,25 +7,24 @@ import { Loader2 } from "lucide-react";
 import { FloatingPageLayout } from "@/components/floating-page-layout";
 
 export default function SettingsPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function checkAuth() {
+    async function getUserId() {
       try {
         setLoading(true);
         const supabase = createClient();
         const { data } = await supabase.auth.getUser();
-        setIsAuthenticated(!!data.user);
+        setUserId(data.user?.id || null);
       } catch (error) {
-        console.error("Error checking authentication:", error);
-        setIsAuthenticated(false);
+        console.error("Error fetching user:", error);
       } finally {
         setLoading(false);
       }
     }
 
-    checkAuth();
+    getUserId();
   }, []);
 
   if (loading) {
@@ -40,7 +39,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!userId) {
     return (
       <FloatingPageLayout
         title="Settings"
@@ -57,7 +56,7 @@ export default function SettingsPage() {
       title="Settings"
       description="Manage your profile and preferences"
     >
-      <Settings />
+      <Settings userId={userId} />
     </FloatingPageLayout>
   );
 }

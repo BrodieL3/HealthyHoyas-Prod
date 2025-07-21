@@ -51,7 +51,13 @@ export async function saveWeightEntry(
 
       if (error) {
         console.error("Error updating weight entry:", error);
-        throw new Error(`Failed to update weight entry: ${error.message}`);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        return null;
       }
 
       return data;
@@ -71,14 +77,20 @@ export async function saveWeightEntry(
 
       if (error) {
         console.error("Error creating weight entry:", error);
-        throw new Error(`Failed to create weight entry: ${error.message}`);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        return null;
       }
 
       return data;
     }
   } catch (error) {
     console.error("Error in saveWeightEntry:", error);
-    throw error;
+    return null;
   }
 }
 
@@ -178,6 +190,12 @@ export async function saveStepsEntry(data: {
 
       if (error) {
         console.error("Error saving steps entry:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return null;
       }
 
@@ -220,6 +238,12 @@ export async function saveSleepEntry(data: {
 
       if (error) {
         console.error("Error updating sleep entry:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return null;
       }
 
@@ -239,6 +263,12 @@ export async function saveSleepEntry(data: {
 
       if (error) {
         console.error("Error saving sleep entry:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return null;
       }
 

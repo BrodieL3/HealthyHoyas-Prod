@@ -14,8 +14,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Utensils,
-  Pill,
   Wine,
+  Pill,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {

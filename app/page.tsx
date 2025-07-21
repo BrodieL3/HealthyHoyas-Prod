@@ -1,25 +1,18 @@
-import { Dashboard } from "@/components/dashboard";
-import type { Metadata } from "next";
-import { ServerSkeletons } from "@/components/server-ui";
+// app/page.tsx
+import { createClient } from "@/utils/supabase/server";
+import LandingPage from "@/components/landing-page";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Dashboard | HealthyHoyas",
-  description: "Track your health and fitness",
-};
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-// Enable static generation for better performance
-export const dynamic = "force-static";
-export const revalidate = 3600; // Revalidate every hour
-
-// Pre-render server components for the dashboard
 export default async function Home() {
-  // Pre-render server components to pass as props
-  const serverSkeletons = ServerSkeletons();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  return <Dashboard fallbackSkeletons={serverSkeletons} />;
-}
+  if (user) {
+    redirect("/protected/dashboard");
+  }
 
-export async function generateStaticParams() {
-  // For static generation
-  return [];
+  redirect("/public/landing-page");
 }
