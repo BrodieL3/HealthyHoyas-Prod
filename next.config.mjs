@@ -54,7 +54,6 @@ const nextConfig = {
       "@/lib/supabase/health",
       "@/lib/supabase/types",
     ],
-    ppr: "incremental", // Enable Partial Prerendering
   },
   // Proper Turbopack configuration (moved from experimental.turbo)
   turbopack: {
